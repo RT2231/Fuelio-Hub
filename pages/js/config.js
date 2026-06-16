@@ -1,7 +1,6 @@
 // Fuelio Hub - Config
-// このURLをデプロイ後のWorkerのURLに変更してください
 const CONFIG = {
-  API_BASE: 'https://fuelio-hub-api.YOUR_SUBDOMAIN.workers.dev/api/v1',
+  API_BASE: 'https://fuelio-hub-api.shirokuma0822.workers.dev/api/v1',
 }
 
 // 燃料タイプ
