@@ -10,7 +10,7 @@ database_id = "YOUR_D1_DATABASE_ID"
 
 [vars]
 JWT_SECRET = "CHANGE_THIS_IN_DASHBOARD"
-FRONTEND_URL = "https://your-pages-domain.pages.dev"
+FRONTEND_URL = "https://your-app.vercel.app"
 
 # Workers AI for OCR (optional)
 # [[ai]]

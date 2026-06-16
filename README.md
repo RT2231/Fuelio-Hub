@@ -17,17 +17,30 @@
 2. データベース名: `fuelio-hub-db`（任意）
 3. 作成後、**Console** タブを開き、`worker/schema.sql` の中身を全部貼り付けて実行
    - もしくは **Settings** → ファイルアップロード機能があればそれでschema.sqlを実行
-4. 作成されたデータベースの **Database ID** をメモ
+4. 作成されたデータベースの **Database ID**（UUID形式）をメモ
+5. `worker/wrangler.toml` 内の `database_id = "YOUR_D1_DATABASE_ID"` を、メモしたIDに書き換えてGitHubにpush
+   - これを行わないと、手順2のWorkerデプロイ時に `wrangler deploy` がエラーになります
+   - pushしたあとも、手順2でダッシュボードからD1バインディングを設定し直せば、そちらの設定が優先されます（二重で安全）
 
 ---
 
-## 2. Workerをデプロイ
+## 2. Workerをデプロイ（GitHub連携 / Workers Builds）
 
-### ダッシュボードからのデプロイ（推奨・コードレス操作）
+GitHubにpushするだけで自動デプロイされる方式です。
 
-1. **Workers & Pages** → **Create** → **Workers** → **Import / Upload code** などのオプションを選択
-   - もしくは一度だけ `npx wrangler deploy` をローカルやCI（GitHub連携）で実行し、以後の設定変更はダッシュボードで行う方法でも構いません
-2. Worker名: `fuelio-hub-api`
+### Workerの作成とGitHub連携
+
+1. Cloudflareダッシュボード → **Workers & Pages** → **Create** → **Workers** タブ
+2. **Import a repository**（または「Connect to Git」）を選択
+3. GitHubと連携し、リポジトリ `RT2231/Fuelio-Hub` を選択
+4. **Root directory**（モノレポ設定）に `worker` と入力
+   - これによりこのフォルダだけをWorkerのソースとして扱います
+5. **Build command**: 空欄でOK（TypeScriptはwranglerが処理します）
+6. **Deploy command**: `npx wrangler deploy`
+7. Worker名: `fuelio-hub-api`（任意の名前でも可、後でURLに反映されます）
+8. **Save and Deploy**
+
+初回デプロイ後、`https://fuelio-hub-api.<あなたのサブドメイン>.workers.dev` のようなURLが発行されます。これをメモしてください。
 
 ### D1バインディングの設定（ダッシュボード操作）
 
@@ -35,7 +48,7 @@
 2. **D1 Database** を選択
 3. Variable name: `DB`
 4. 対象データベース: 手順1で作成した `fuelio-hub-db`
-5. **Save**
+5. **Save**（保存後、自動的に再デプロイされます）
 
 ### 環境変数の設定（ダッシュボード操作）
 
@@ -44,9 +57,13 @@
 | 変数名 | 値 | Secret推奨 |
 |---|---|---|
 | `JWT_SECRET` | ランダムな長い文字列（例: 32文字以上のランダム文字列） | ✅ Secret化推奨 |
-| `FRONTEND_URL` | あとで作るPagesのURL（例: `https://fuelio-hub.pages.dev`） | 通常変数でOK |
+| `FRONTEND_URL` | VercelのURL（例: `https://fuelio-hub.vercel.app`） | 通常変数でOK |
 
-> `wrangler.toml` 内の値はテンプレートなので、実際の値は必ずダッシュボードの環境変数で上書き・管理してください。
+> `wrangler.toml` 内の値はテンプレートなので、実際の値は必ずダッシュボードの環境変数・バインディングで上書き・管理してください（`database_id`がテンプレートのままでも、ダッシュボードでバインディングを設定すればそちらが優先されます）。
+
+### 以後の更新
+
+このリポジトリの `worker/` フォルダに変更をpushするたびに、Workers Buildsが自動的に再デプロイします。
 
 ---
 
