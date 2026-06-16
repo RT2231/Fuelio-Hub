@@ -1,0 +1,17 @@
+name = "fuelio-hub-api"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "fuelio-hub-db"
+database_id = "YOUR_D1_DATABASE_ID"
+
+[vars]
+JWT_SECRET = "CHANGE_THIS_IN_DASHBOARD"
+FRONTEND_URL = "https://your-pages-domain.pages.dev"
+
+# Workers AI for OCR (optional)
+# [[ai]]
+# binding = "AI"

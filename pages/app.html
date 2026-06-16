@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fuelio Hub</title>
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/css/app.css">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div id="toast"></div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- Mobile Header -->
+<header class="mobile-header">
+  <button class="hamburger" onclick="openSidebar()">☰</button>
+  <span class="mobile-logo">Fuelio Hub</span>
+  <div style="margin-left:auto">
+    <button class="btn-icon" onclick="openVehicleModal()" title="車両追加">＋</button>
+  </div>
+</header>
+
+<div class="app-layout">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
+        <rect width="40" height="40" rx="10" fill="url(#lg2)"/>
+        <path d="M8 28 L14 16 L20 22 L26 12 L32 20" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="20" cy="30" r="3" fill="#00D4FF"/>
+        <defs><linearGradient id="lg2" x1="0" y1="0" x2="40" y2="40"><stop offset="0%" stop-color="#1E3A5F"/><stop offset="100%" stop-color="#0A0F1E"/></linearGradient></defs>
+      </svg>
+      <span class="sidebar-logo-text">Fuelio Hub</span>
+    </div>
+
+    <!-- Vehicle Selector -->
+    <div class="vehicle-selector">
+      <div class="vehicle-select-label">車両</div>
+      <button class="vehicle-select-btn" id="vehicle-select-btn" onclick="showVehiclePicker()">
+        <span class="vehicle-type-icon" id="vs-icon">🚗</span>
+        <span class="v-name" id="vs-name">選択してください</span>
+        <span class="v-chevron">▾</span>
+      </button>
+    </div>
+
+    <!-- Navigation -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">メニュー</div>
+      <button class="nav-item active" id="nav-dashboard" onclick="navigate('dashboard')">
+        <span class="nav-icon">📊</span> ダッシュボード
+      </button>
+      <button class="nav-item" id="nav-fuel" onclick="navigate('fuel')">
+        <span class="nav-icon">⛽</span> 給油記録
+      </button>
+      <button class="nav-item" id="nav-maintenance" onclick="navigate('maintenance')">
+        <span class="nav-icon">🔧</span> メンテナンス
+      </button>
+      <button class="nav-item" id="nav-stats" onclick="navigate('stats')">
+        <span class="nav-icon">📈</span> 統計・分析
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">設定</div>
+      <button class="nav-item" id="nav-vehicles" onclick="navigate('vehicles')">
+        <span class="nav-icon">🚙</span> 車両管理
+      </button>
+      <button class="nav-item" id="nav-tokens" onclick="navigate('tokens')">
+        <span class="nav-icon">🔑</span> APIトークン
+      </button>
+    </div>
+
+    <div class="sidebar-bottom">
+      <button class="nav-item" onclick="showProfileModal()">
+        <span class="nav-icon">👤</span> <span id="sidebar-username">アカウント</span>
+      </button>
+      <button class="nav-item" onclick="logout()">
+        <span class="nav-icon">🚪</span> ログアウト
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div id="page-dashboard"></div>
+    <div id="page-fuel" class="hidden"></div>
+    <div id="page-maintenance" class="hidden"></div>
+    <div id="page-stats" class="hidden"></div>
+    <div id="page-vehicles" class="hidden"></div>
+    <div id="page-tokens" class="hidden"></div>
+  </main>
+</div>
+
+<!-- Bottom Nav (mobile) -->
+<nav class="bottom-nav">
+  <div class="bottom-nav-items">
+    <button class="bottom-nav-item active" id="bn-dashboard" onclick="navigate('dashboard')">
+      <span class="bn-icon">📊</span><span>ホーム</span>
+    </button>
+    <button class="bottom-nav-item" id="bn-fuel" onclick="navigate('fuel')">
+      <span class="bn-icon">⛽</span><span>給油</span>
+    </button>
+    <button class="bottom-nav-item" id="bn-maintenance" onclick="navigate('maintenance')">
+      <span class="bn-icon">🔧</span><span>整備</span>
+    </button>
+    <button class="bottom-nav-item" id="bn-stats" onclick="navigate('stats')">
+      <span class="bn-icon">📈</span><span>統計</span>
+    </button>
+    <button class="bottom-nav-item" id="bn-vehicles" onclick="navigate('vehicles')">
+      <span class="bn-icon">🚙</span><span>車両</span>
+    </button>
+  </div>
+</nav>
+
+<!-- Modals -->
+<div id="modal-container"></div>
+
+<script src="/js/config.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/pages/dashboard.js"></script>
+<script src="/js/pages/fuel.js"></script>
+<script src="/js/pages/maintenance.js"></script>
+<script src="/js/pages/stats.js"></script>
+<script src="/js/pages/vehicles.js"></script>
+<script src="/js/pages/tokens.js"></script>
+</body>
+</html>

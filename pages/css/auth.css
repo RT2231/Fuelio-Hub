@@ -1,0 +1,42 @@
+/* ===== Auth Page ===== */
+.auth-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+
+.auth-bg {
+  position: fixed; inset: 0; pointer-events: none; overflow: hidden;
+}
+.auth-glow {
+  position: absolute; width: 600px; height: 600px;
+  background: radial-gradient(ellipse, rgba(0,212,255,0.06) 0%, transparent 70%);
+  top: -100px; left: 50%; transform: translateX(-50%);
+}
+
+.auth-container { width: 100%; max-width: 400px; padding: 20px; position: relative; z-index: 1; }
+
+.auth-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 36px; box-shadow: var(--shadow);
+}
+
+.auth-logo {
+  display: flex; align-items: center; gap: 12px; justify-content: center;
+  margin-bottom: 8px;
+}
+.auth-logo-text { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+
+.auth-tagline { text-align: center; font-size: 13px; color: var(--text-2); margin-bottom: 28px; }
+
+.tab-bar {
+  display: flex; gap: 4px; background: var(--bg-deep);
+  border-radius: var(--radius); padding: 4px; margin-bottom: 24px;
+}
+.tab-btn {
+  flex: 1; padding: 8px; background: transparent; border: none;
+  color: var(--text-3); font-size: 14px; font-weight: 600; cursor: pointer;
+  border-radius: 7px; transition: var(--transition);
+}
+.tab-btn.active {
+  background: var(--bg-card2); color: var(--text);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.btn-spinner { animation: spin 0.7s linear infinite; display: inline-block; }

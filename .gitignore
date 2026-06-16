@@ -1,0 +1,11 @@
+# Worker
+worker/node_modules/
+worker/.wrangler/
+worker/dist/
+*.log
+
+# OS
+.DS_Store
+
+# Vercel
+.vercel
