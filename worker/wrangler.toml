@@ -3,12 +3,19 @@ main = "src/index.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
+# ダッシュボードで設定した環境変数(Variables)が、GitHub経由の再デプロイで
+# 上書きされないようにする設定。Secret(暗号化変数)はこの設定がなくても保護されます。
+keep_vars = true
+
 [[d1_databases]]
 binding = "DB"
 database_name = "fuelio-hub-db"
 database_id = "b95e13e7-65bc-4eaf-adad-2ab3c91967f0"
 
 [vars]
+# 以下はこのリポジトリ単体でデプロイした場合の初期値（フォールバック）です。
+# keep_vars=true により、ダッシュボードのSettings > Variablesで設定した値が
+# 優先され、再デプロイ時も保持されます。
 JWT_SECRET = "CHANGE_THIS_IN_DASHBOARD"
 FRONTEND_URL = "https://your-app.vercel.app"
 

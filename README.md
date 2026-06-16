@@ -60,6 +60,8 @@ GitHubにpushするだけで自動デプロイされる方式です。
 | `FRONTEND_URL` | VercelのURL（例: `https://fuelio-hub.vercel.app`） | 通常変数でOK |
 
 > `wrangler.toml` 内の値はテンプレートなので、実際の値は必ずダッシュボードの環境変数・バインディングで上書き・管理してください（`database_id`がテンプレートのままでも、ダッシュボードでバインディングを設定すればそちらが優先されます）。
+>
+> `wrangler.toml` には `keep_vars = true` を設定済みです。これにより、GitHubにpushして自動再デプロイが走っても、ダッシュボードのSettings → Variablesで設定した値（`JWT_SECRET`など）は上書きされず保持されます。
 
 ### 以後の更新
 
