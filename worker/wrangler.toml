@@ -6,7 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "fuelio-hub-db"
-database_id = "YOUR_D1_DATABASE_ID"
+database_id = "b95e13e7-65bc-4eaf-adad-2ab3c91967f0"
 
 [vars]
 JWT_SECRET = "CHANGE_THIS_IN_DASHBOARD"
