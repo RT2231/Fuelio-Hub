@@ -41,10 +41,12 @@ function renderVehiclesList() {
               ${[v.manufacturer, v.model, v.year ? v.year+'年' : ''].filter(Boolean).join(' ・ ')}
               ${v.manufacturer || v.model ? '／' : ''} ${f.icon} ${f.label} ・ ${t.label}
             </div>
+            ${v.vin ? `<div style="font-size:11px;color:var(--text-3);margin-top:2px;font-family:monospace;letter-spacing:0.03em">VIN: ${v.vin}</div>` : ''}
             ${v.note ? `<div style="font-size:12px;color:var(--text-3);margin-top:4px">${v.note}</div>` : ''}
           </div>
           <div style="display:flex;gap:6px;flex-shrink:0">
             ${!isCurrent ? `<button class="btn-secondary" onclick="selectVehicle(${JSON.stringify(v).replace(/"/g,"'")});renderVehiclesList()">選択</button>` : ''}
+            ${v.vin ? `<button class="btn-secondary" onclick="showVehicleSpecs('${v.vin}','${v.name}')">📋 スペック</button>` : ''}
             ${v.user_role !== 'viewer' ? `<button class="btn-secondary" onclick="openVehicleModal(${JSON.stringify(v).replace(/"/g,"'")})">✏️ 編集</button>` : ''}
             ${v.user_role === 'owner' ? `<button class="btn-danger" onclick="deleteVehicle('${v.id}')">削除</button>` : ''}
           </div>
@@ -308,5 +310,63 @@ async function deleteToken(id) {
     await loadTokens()
   } catch (e) {
     toast(e.message, 'error')
+  }
+}
+
+
+// ===== Auto.dev: スペック確認 =====
+async function showVehicleSpecs(vin, vehicleName) {
+  showModal(`
+    <div class="modal-title">📋 ${vehicleName} のスペック</div>
+    <div id="specs-content"><div class="page-loading"><div class="spinner"></div></div></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal()">閉じる</button>
+    </div>
+  `)
+
+  const content = document.getElementById('specs-content')
+  try {
+    const res = await api.get(`/autodev/vin/${vin}`)
+    const d = res.data
+
+    const rows = [
+      ['メーカー', d.make],
+      ['モデル', d.model],
+      ['年式', d.year],
+      ['トリム', d.trim],
+      ['ボディタイプ', d.bodyStyle],
+      ['駆動方式', d.drivenWheels],
+      ['ドア数', d.numOfDoors],
+      ['トランスミッション', d.transmission],
+      ['エンジン', d.engine?.name],
+      ['燃料タイプ', d.engine?.fuelType],
+      ['馬力', d.engine?.horsepower ? `${d.engine.horsepower} hp` : null],
+      ['排気量', d.engine?.displacement ? `${d.engine.displacement} L` : null],
+      ['燃費(市街地)', d.mpg?.city ? `${d.mpg.city} MPG` : null],
+      ['燃費(高速)', d.mpg?.highway ? `${d.mpg.highway} MPG` : null],
+      ['新車時価格(MSRP)', d.baseMsrp ? `$${Number(d.baseMsrp).toLocaleString()}` : null],
+    ].filter(([, val]) => val != null && val !== '')
+
+    if (rows.length === 0) {
+      content.innerHTML = `<div class="empty-state" style="padding:20px"><p>スペック情報が見つかりませんでした</p></div>`
+      return
+    }
+
+    content.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <tbody>
+            ${rows.map(([label, val]) => `
+              <tr><td style="color:var(--text-2);width:40%">${label}</td><td style="font-weight:600">${val}</td></tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--text-3)">
+        ※ MPG（マイル/ガロン）は米国基準の燃費表示です。データ提供: Auto.dev
+      </div>
+    `
+  } catch (e) {
+    content.innerHTML = `<div class="error-msg">${e.message}</div>`
   }
 }

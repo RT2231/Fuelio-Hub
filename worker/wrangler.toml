@@ -18,6 +18,8 @@ database_id = "b95e13e7-65bc-4eaf-adad-2ab3c91967f0"
 # 優先され、再デプロイ時も保持されます。
 JWT_SECRET = "CHANGE_THIS_IN_DASHBOARD"
 FRONTEND_URL = "https://your-app.vercel.app"
+# Auto.dev APIキー（VIN検索・スペック確認機能用）。ダッシュボードでSecretとして設定してください。
+AUTODEV_API_KEY = "CHANGE_THIS_IN_DASHBOARD"
 
 # Workers AI for OCR (optional)
 # [[ai]]

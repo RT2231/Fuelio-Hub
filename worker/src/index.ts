@@ -8,6 +8,7 @@ import { maintenanceRoutes } from './routes/maintenance'
 import { statsRoutes } from './routes/stats'
 import { tokenRoutes } from './routes/tokens'
 import { publicRoutes } from './routes/public'
+import { autodevRoutes } from './routes/autodev'
 import type { Env } from './types'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -15,7 +16,8 @@ const app = new Hono<{ Bindings: Env }>()
 app.use('*', logger())
 
 app.use('*', async (c, next) => {
-  const origin = c.env.FRONTEND_URL || '*'
+  // 末尾スラッシュの有無で一致判定がブレないように正規化
+  const origin = (c.env.FRONTEND_URL || '*').replace(/\/$/, '')
   return cors({
     origin,
     allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -35,6 +37,7 @@ api.route('/maintenance', maintenanceRoutes)
 api.route('/stats', statsRoutes)
 api.route('/tokens', tokenRoutes)
 api.route('/public', publicRoutes)
+api.route('/autodev', autodevRoutes)
 
 app.route('/api/v1', api)
 

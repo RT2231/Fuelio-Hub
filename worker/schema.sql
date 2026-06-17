@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
   manufacturer TEXT,
   model TEXT,
   year INTEGER,
+  vin TEXT,
   vehicle_type TEXT NOT NULL CHECK(vehicle_type IN ('car','motorcycle','electric','generator','other')),
   fuel_type TEXT NOT NULL CHECK(fuel_type IN ('gasoline','high_octane','diesel','electric','other')),
   color TEXT,
@@ -85,6 +86,7 @@ CREATE TABLE IF NOT EXISTS api_tokens (
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_vehicles_owner ON vehicles(owner_id);
+CREATE INDEX IF NOT EXISTS idx_vehicles_vin ON vehicles(vin);
 CREATE INDEX IF NOT EXISTS idx_fuel_vehicle ON fuel_records(vehicle_id);
 CREATE INDEX IF NOT EXISTS idx_fuel_date ON fuel_records(date);
 CREATE INDEX IF NOT EXISTS idx_members_user ON vehicle_members(user_id);

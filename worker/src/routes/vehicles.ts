@@ -25,7 +25,7 @@ vehicleRoutes.post('/', async (c) => {
   const userId = c.get('userId')
   const body = await c.req.json()
 
-  const { name, manufacturer, model, year, vehicle_type, fuel_type, color, note } = body
+  const { name, manufacturer, model, year, vin, vehicle_type, fuel_type, color, note } = body
 
   if (!name || !vehicle_type || !fuel_type) {
     return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: '名前・車両種別・燃料種別は必須です' } }, 400)
@@ -42,8 +42,8 @@ vehicleRoutes.post('/', async (c) => {
 
   await c.env.DB.batch([
     c.env.DB.prepare(
-      'INSERT INTO vehicles (id, owner_id, name, manufacturer, model, year, vehicle_type, fuel_type, color, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).bind(id, userId, name, manufacturer || null, model || null, year || null, vehicle_type, fuel_type, color || null, note || null),
+      'INSERT INTO vehicles (id, owner_id, name, manufacturer, model, year, vin, vehicle_type, fuel_type, color, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).bind(id, userId, name, manufacturer || null, model || null, year || null, vin || null, vehicle_type, fuel_type, color || null, note || null),
     c.env.DB.prepare(
       'INSERT INTO vehicle_members (vehicle_id, user_id, role) VALUES (?, ?, ?)'
     ).bind(id, userId, 'owner')
@@ -86,7 +86,7 @@ vehicleRoutes.patch('/:id', async (c) => {
   }
 
   const body = await c.req.json()
-  const { name, manufacturer, model, year, vehicle_type, fuel_type, color, note } = body
+  const { name, manufacturer, model, year, vin, vehicle_type, fuel_type, color, note } = body
 
   await c.env.DB.prepare(`
     UPDATE vehicles SET
@@ -94,13 +94,14 @@ vehicleRoutes.patch('/:id', async (c) => {
       manufacturer = COALESCE(?, manufacturer),
       model = COALESCE(?, model),
       year = COALESCE(?, year),
+      vin = COALESCE(?, vin),
       vehicle_type = COALESCE(?, vehicle_type),
       fuel_type = COALESCE(?, fuel_type),
       color = COALESCE(?, color),
       note = COALESCE(?, note),
       updated_at = datetime('now')
     WHERE id = ?
-  `).bind(name || null, manufacturer || null, model || null, year || null, vehicle_type || null, fuel_type || null, color || null, note || null, vehicleId).run()
+  `).bind(name || null, manufacturer || null, model || null, year || null, vin || null, vehicle_type || null, fuel_type || null, color || null, note || null, vehicleId).run()
 
   const vehicle = await c.env.DB.prepare('SELECT * FROM vehicles WHERE id = ?').bind(vehicleId).first()
   return c.json({ success: true, data: vehicle })
