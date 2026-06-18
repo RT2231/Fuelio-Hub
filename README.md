@@ -54,14 +54,14 @@ GitHubにpushするだけで自動デプロイされる方式です。
 
 同じ **Settings** → **Variables** で以下を追加:
 
-| 変数名 | 値 | Secret推奨 |
+| 変数名 | 値 | 設定方法 |
 |---|---|---|
-| `JWT_SECRET` | ランダムな長い文字列（例: 32文字以上のランダム文字列） | ✅ Secret化推奨 |
-| `FRONTEND_URL` | VercelのURL（例: `https://fuelio-hub.vercel.app`） | 通常変数でOK |
+| `JWT_SECRET` | ランダムな長い文字列（32文字以上推奨。例: `openssl rand -hex 32` で生成） | ✅ 必ず**Encrypt（Secret化）**をONにする |
+| `FRONTEND_URL` | VercelのURL（例: `https://fuelio-hub.vercel.app`、末尾スラッシュなし） | 通常のVariableでOK |
 
-> `wrangler.toml` 内の値はテンプレートなので、実際の値は必ずダッシュボードの環境変数・バインディングで上書き・管理してください（`database_id`がテンプレートのままでも、ダッシュボードでバインディングを設定すればそちらが優先されます）。
+> **重要**: `JWT_SECRET`や`AUTODEV_API_KEY`のような機密情報は、`worker/wrangler.toml`の`[vars]`セクションに**名前すら書かないでください**。同じ名前の変数が`wrangler.toml`の`[vars]`に存在すると、GitHubへのpushで再デプロイが走るたびに、その値でダッシュボードのSecretが上書き・無効化されてしまいます（Cloudflare/Wranglerの仕様）。このリポジトリの`wrangler.toml`は機密変数名を含まない構成にしているので、そのまま使えば問題ありません。
 >
-> `wrangler.toml` には `keep_vars = true` を設定済みです。これにより、GitHubにpushして自動再デプロイが走っても、ダッシュボードのSettings → Variablesで設定した値（`JWT_SECRET`など）は上書きされず保持されます。
+> `wrangler.toml` には `keep_vars = true` を設定済みです。これは`FRONTEND_URL`のような非機密のVariableが、GitHub経由の再デプロイで上書きされないようにする設定です。
 
 ### 以後の更新
 
@@ -140,7 +140,7 @@ CREATE INDEX IF NOT EXISTS idx_vehicles_vin ON vehicles(vin);
 3. **Encrypt**（Secret化）を必ずONにしてください（このキーは課金に直結するため、平文保存は避けてください）
 4. 保存
 
-> APIキーはWorker側のみで保持し、フロントエンド（ブラウザ）には一切渡されません。VIN検索・スペック取得はすべてWorker経由のプロキシ呼び出しになっています。
+> `worker/wrangler.toml`には`AUTODEV_API_KEY`という名前を一切記述していません。これは、`[vars]`に同名のキーがあるとデプロイのたびにダッシュボードのSecretが上書きされてしまうためです。ダッシュボードでの設定だけが唯一の設定場所になります。
 
 ### 使い方
 

@@ -4,7 +4,7 @@ compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
 # ダッシュボードで設定した環境変数(Variables)が、GitHub経由の再デプロイで
-# 上書きされないようにする設定。Secret(暗号化変数)はこの設定がなくても保護されます。
+# 上書きされないようにする設定。
 keep_vars = true
 
 [[d1_databases]]
@@ -13,13 +13,11 @@ database_name = "fuelio-hub-db"
 database_id = "b95e13e7-65bc-4eaf-adad-2ab3c91967f0"
 
 [vars]
-# 以下はこのリポジトリ単体でデプロイした場合の初期値（フォールバック）です。
-# keep_vars=true により、ダッシュボードのSettings > Variablesで設定した値が
-# 優先され、再デプロイ時も保持されます。
-JWT_SECRET = "CHANGE_THIS_IN_DASHBOARD"
+# 機密情報（JWT_SECRET, AUTODEV_API_KEY）はこのファイルに一切記述しません。
+# Cloudflareダッシュボードの Settings > Variables で "Encrypt" をONにして設定してください。
+# ここに同名の変数を書くと、デプロイのたびにダッシュボードのSecretがこの値で上書きされてしまうため、
+# 意図的に記述していません。
 FRONTEND_URL = "https://your-app.vercel.app"
-# Auto.dev APIキー（VIN検索・スペック確認機能用）。ダッシュボードでSecretとして設定してください。
-AUTODEV_API_KEY = "CHANGE_THIS_IN_DASHBOARD"
 
 # Workers AI for OCR (optional)
 # [[ai]]
