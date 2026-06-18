@@ -6,7 +6,7 @@
 }
 .auth-glow {
   position: absolute; width: 600px; height: 600px;
-  background: radial-gradient(ellipse, rgba(0,212,255,0.06) 0%, transparent 70%);
+  background: radial-gradient(ellipse, rgba(224,99,30,0.08) 0%, transparent 70%);
   top: -100px; left: 50%; transform: translateX(-50%);
 }
 
@@ -35,8 +35,8 @@
   border-radius: 7px; transition: var(--transition);
 }
 .tab-btn.active {
-  background: var(--bg-card2); color: var(--text);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  background: var(--bg-card); color: var(--text);
+  box-shadow: 0 1px 4px rgba(28,27,23,0.08);
 }
 
 .btn-spinner { animation: spin 0.7s linear infinite; display: inline-block; }

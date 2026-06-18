@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fuelio Hub - 燃費管理</title>
+<link rel="stylesheet" href="/css/base.css">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+</head>
+<body class="auth-page">
+
+<div class="auth-bg">
+  <div class="auth-glow"></div>
+</div>
+
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+        <rect width="40" height="40" rx="10" fill="url(#logoGrad)"/>
+        <path d="M8 28 L14 16 L20 22 L26 12 L32 20" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="20" cy="30" r="3" fill="#FFD9B8"/>
+        <defs>
+          <linearGradient id="logoGrad" x1="0" y1="0" x2="40" y2="40">
+            <stop offset="0%" stop-color="#E0631E"/>
+            <stop offset="100%" stop-color="#B84F18"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      <span class="auth-logo-text">Fuelio Hub</span>
+    </div>
+    <p class="auth-tagline">燃費・コストをスマートに管理</p>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tab-login" onclick="switchTab('login')">ログイン</button>
+      <button class="tab-btn" id="tab-register" onclick="switchTab('register')">新規登録</button>
+    </div>
+
+    <!-- Login Form -->
+    <div id="form-login">
+      <div class="field">
+        <label>メールアドレス</label>
+        <input type="email" id="login-email" placeholder="example@email.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label>パスワード</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div id="login-error" class="error-msg hidden"></div>
+      <button class="btn-primary" id="login-btn" onclick="handleLogin()">
+        <span class="btn-text">ログイン</span>
+        <span class="btn-spinner hidden">●</span>
+      </button>
+    </div>
+
+    <!-- Register Form -->
+    <div id="form-register" class="hidden">
+      <div class="field">
+        <label>表示名</label>
+        <input type="text" id="reg-name" placeholder="ニックネーム" autocomplete="name">
+      </div>
+      <div class="field">
+        <label>メールアドレス</label>
+        <input type="email" id="reg-email" placeholder="example@email.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label>パスワード <span class="hint">8文字以上</span></label>
+        <input type="password" id="reg-password" placeholder="••••••••" autocomplete="new-password">
+      </div>
+      <div id="reg-error" class="error-msg hidden"></div>
+      <button class="btn-primary" id="reg-btn" onclick="handleRegister()">
+        <span class="btn-text">アカウント作成</span>
+        <span class="btn-spinner hidden">●</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<link rel="stylesheet" href="/css/auth.css">
+<script src="/js/config.js"></script>
+<script src="/js/api.js"></script>
+<script>
+  // 既にログイン済みならアプリへ
+  if (localStorage.getItem('fh_token')) {
+    window.location.href = '/app.html'
+  }
+
+  function switchTab(tab) {
+    document.getElementById('form-login').classList.toggle('hidden', tab !== 'login')
+    document.getElementById('form-register').classList.toggle('hidden', tab !== 'register')
+    document.getElementById('tab-login').classList.toggle('active', tab === 'login')
+    document.getElementById('tab-register').classList.toggle('active', tab === 'register')
+  }
+
+  function setLoading(btn, spinner, loading) {
+    document.getElementById(btn).querySelector('.btn-text').classList.toggle('hidden', loading)
+    document.getElementById(btn).querySelector('.btn-spinner').classList.toggle('hidden', !loading)
+    document.getElementById(btn).disabled = loading
+  }
+
+  async function handleLogin() {
+    const email = document.getElementById('login-email').value.trim()
+    const password = document.getElementById('login-password').value
+    const errEl = document.getElementById('login-error')
+    errEl.classList.add('hidden')
+
+    if (!email || !password) {
+      errEl.textContent = 'メールとパスワードを入力してください'
+      errEl.classList.remove('hidden')
+      return
+    }
+
+    setLoading('login-btn', 'login-spinner', true)
+    try {
+      const res = await api.post('/auth/login', { email, password })
+      localStorage.setItem('fh_token', res.data.token)
+      localStorage.setItem('fh_user', JSON.stringify(res.data.user))
+      window.location.href = '/app.html'
+    } catch (e) {
+      errEl.textContent = e.message || 'ログインに失敗しました'
+      errEl.classList.remove('hidden')
+    } finally {
+      setLoading('login-btn', 'login-spinner', false)
+    }
+  }
+
+  async function handleRegister() {
+    const display_name = document.getElementById('reg-name').value.trim()
+    const email = document.getElementById('reg-email').value.trim()
+    const password = document.getElementById('reg-password').value
+    const errEl = document.getElementById('reg-error')
+    errEl.classList.add('hidden')
+
+    if (!email || !password) {
+      errEl.textContent = 'メールとパスワードを入力してください'
+      errEl.classList.remove('hidden')
+      return
+    }
+    if (password.length < 8) {
+      errEl.textContent = 'パスワードは8文字以上必要です'
+      errEl.classList.remove('hidden')
+      return
+    }
+
+    setLoading('reg-btn', 'reg-spinner', true)
+    try {
+      const res = await api.post('/auth/register', { email, password, display_name })
+      localStorage.setItem('fh_token', res.data.token)
+      localStorage.setItem('fh_user', JSON.stringify(res.data.user))
+      window.location.href = '/app.html'
+    } catch (e) {
+      errEl.textContent = e.message || '登録に失敗しました'
+      errEl.classList.remove('hidden')
+    } finally {
+      setLoading('reg-btn', 'reg-spinner', false)
+    }
+  }
+
+  // Enterキー対応
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const tab = document.getElementById('form-login').classList.contains('hidden') ? 'register' : 'login'
+      if (tab === 'login') handleLogin()
+      else handleRegister()
+    }
+  })
+</script>
+</body>
+</html>

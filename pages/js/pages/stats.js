@@ -108,8 +108,8 @@ function renderStatsCharts(s) {
     responsive: true, maintainAspectRatio: false,
     plugins: { legend: { display: false } },
     scales: {
-      x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#4B6080', font: { size: 10 }, maxRotation: 45 } },
-      y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#4B6080', font: { size: 10 } } }
+      x: { grid: { color: 'rgba(28,27,23,0.05)' }, ticks: { color: '#A29C89', font: { size: 10 }, maxRotation: 45 } },
+      y: { grid: { color: 'rgba(28,27,23,0.05)' }, ticks: { color: '#A29C89', font: { size: 10 } } }
     }
   }
 
@@ -122,12 +122,12 @@ function renderStatsCharts(s) {
         labels: effData.map(r => fmtDate(r.date)),
         datasets: [{
           data: effData.map(r => r.efficiency),
-          borderColor: '#00D4FF', backgroundColor: 'rgba(0,212,255,0.06)',
-          fill: true, tension: 0.4, pointRadius: 2, pointBackgroundColor: '#00D4FF'
+          borderColor: '#E0631E', backgroundColor: 'rgba(224,99,30,0.06)',
+          fill: true, tension: 0.4, pointRadius: 2, pointBackgroundColor: '#E0631E'
         }, {
           // 平均線
           data: effData.map(() => s.averageEfficiency),
-          borderColor: 'rgba(255,255,255,0.2)', borderDash: [4,4],
+          borderColor: 'rgba(28,27,23,0.18)', borderDash: [4,4],
           pointRadius: 0, fill: false
         }]
       },
@@ -145,11 +145,11 @@ function renderStatsCharts(s) {
         datasets: [{
           data: meffData.map(r => r.avg_efficiency ? Math.round(r.avg_efficiency*100)/100 : 0),
           backgroundColor: meffData.map(r => (r.avg_efficiency || 0) >= (s.averageEfficiency || 0)
-            ? 'rgba(16,185,129,0.6)' : 'rgba(0,212,255,0.4)'),
+            ? 'rgba(31,122,77,0.55)' : 'rgba(224,99,30,0.35)'),
           borderWidth: 0, borderRadius: 4
         }]
       },
-      options: { ...defaults, scales: { ...defaults.scales, y: { ...defaults.scales.y, title: { display:true, text:'km/L', color:'#4B6080', font:{size:10} } } } }
+      options: { ...defaults, scales: { ...defaults.scales, y: { ...defaults.scales.y, title: { display:true, text:'km/L', color:'#A29C89', font:{size:10} } } } }
     })
   }
 
@@ -162,7 +162,7 @@ function renderStatsCharts(s) {
         labels: costData.map(r => r.month),
         datasets: [{
           data: costData.map(r => r.cost || 0),
-          backgroundColor: 'rgba(16,185,129,0.5)', borderColor: '#10B981',
+          backgroundColor: 'rgba(31,122,77,0.45)', borderColor: '#1F7A4D',
           borderWidth: 1, borderRadius: 4
         }]
       },
@@ -178,11 +178,11 @@ function renderStatsCharts(s) {
         labels: costData.map(r => r.month),
         datasets: [{
           data: costData.map(r => r.fuel_amount ? Math.round(r.fuel_amount*10)/10 : 0),
-          backgroundColor: 'rgba(0,212,255,0.4)', borderColor: '#00D4FF',
+          backgroundColor: 'rgba(224,99,30,0.35)', borderColor: '#E0631E',
           borderWidth: 1, borderRadius: 4
         }]
       },
-      options: { ...defaults, scales: { ...defaults.scales, y: { ...defaults.scales.y, title: { display:true, text:'L', color:'#4B6080', font:{size:10} } } } }
+      options: { ...defaults, scales: { ...defaults.scales, y: { ...defaults.scales.y, title: { display:true, text:'L', color:'#A29C89', font:{size:10} } } } }
     })
   }
 }

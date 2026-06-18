@@ -117,8 +117,8 @@ function renderDashCharts(s) {
   const chartDefaults = {
     plugins: { legend: { display: false } },
     scales: {
-      x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#4B6080', font: { size: 11 } } },
-      y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#4B6080', font: { size: 11 } } }
+      x: { grid: { color: 'rgba(28,27,23,0.06)' }, ticks: { color: '#A29C89', font: { size: 11 } } },
+      y: { grid: { color: 'rgba(28,27,23,0.06)' }, ticks: { color: '#A29C89', font: { size: 11 } } }
     }
   }
 
@@ -133,16 +133,16 @@ function renderDashCharts(s) {
           labels: effData.map(r => fmtDate(r.date)),
           datasets: [{
             data: effData.map(r => r.efficiency),
-            borderColor: '#00D4FF',
-            backgroundColor: 'rgba(0,212,255,0.08)',
+            borderColor: '#E0631E',
+            backgroundColor: 'rgba(224,99,30,0.08)',
             fill: true,
             tension: 0.4,
             pointRadius: 3,
-            pointBackgroundColor: '#00D4FF',
+            pointBackgroundColor: '#E0631E',
           }]
         },
         options: { ...chartDefaults, responsive: true, maintainAspectRatio: false,
-          scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, title: { display: true, text: 'km/L', color: '#4B6080', font: { size: 10 } } } }
+          scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, title: { display: true, text: 'km/L', color: '#A29C89', font: { size: 10 } } } }
         }
       })
     }
@@ -159,14 +159,14 @@ function renderDashCharts(s) {
           labels: costData.map(r => r.month),
           datasets: [{
             data: costData.map(r => r.cost || 0),
-            backgroundColor: 'rgba(16,185,129,0.5)',
-            borderColor: '#10B981',
+            backgroundColor: 'rgba(31,122,77,0.45)',
+            borderColor: '#1F7A4D',
             borderWidth: 1,
             borderRadius: 4,
           }]
         },
         options: { ...chartDefaults, responsive: true, maintainAspectRatio: false,
-          scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, title: { display: true, text: '円', color: '#4B6080', font: { size: 10 } } } }
+          scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, title: { display: true, text: '円', color: '#A29C89', font: { size: 10 } } } }
         }
       })
     }

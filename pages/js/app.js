@@ -2,7 +2,7 @@
 
 // Auth guard
 if (!localStorage.getItem('fh_token')) {
-  window.location.href = '/'
+  window.location.href = '/login.html'
 }
 
 // App State
@@ -144,7 +144,7 @@ function logout() {
   localStorage.removeItem('fh_token')
   localStorage.removeItem('fh_user')
   localStorage.removeItem('fh_last_vehicle')
-  window.location.href = '/'
+  window.location.href = '/login.html'
 }
 
 async function showProfileModal() {

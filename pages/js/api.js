@@ -17,7 +17,7 @@ const api = {
       if (res.status === 401) {
         localStorage.removeItem('fh_token')
         localStorage.removeItem('fh_user')
-        window.location.href = '/'
+        window.location.href = '/login.html'
         return
       }
       throw new Error(data.error?.message || 'エラーが発生しました')
