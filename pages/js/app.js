@@ -67,9 +67,9 @@ function showVehiclePicker() {
     const t = VEHICLE_TYPES[v.vehicle_type] || VEHICLE_TYPES.other
     return `<button class="nav-item ${v.id === appState.currentVehicle?.id ? 'active' : ''}"
       style="width:100%;text-align:left;margin-bottom:2px"
-      onclick="selectVehicle(${JSON.stringify(v).replace(/"/g,"'")});closeModal()">
-      <span>${t.icon}</span> ${v.name}
-      <span style="margin-left:auto;font-size:11px;color:var(--text-3)">${FUEL_TYPES[v.fuel_type]?.label || ''}</span>
+      data-obj="${dataAttr(v)}" onclick="selectVehicle(readDataAttr(this));closeModal()">
+      <span>${t.icon}</span> ${esc(v.name)}
+      <span style="margin-left:auto;font-size:11px;color:var(--text-3)">${esc(FUEL_TYPES[v.fuel_type]?.label || '')}</span>
     </button>`
   }).join('')
 
@@ -153,11 +153,11 @@ async function showProfileModal() {
     <div class="modal-title">👤 アカウント設定</div>
     <div class="field">
       <label>表示名</label>
-      <input type="text" id="profile-name" value="${user.display_name || ''}" placeholder="ニックネーム">
+      <input type="text" id="profile-name" value="${esc(user.display_name || '')}" placeholder="ニックネーム">
     </div>
     <div class="field">
       <label>メールアドレス</label>
-      <input type="email" value="${user.email || ''}" disabled style="opacity:0.5">
+      <input type="email" value="${esc(user.email || '')}" disabled style="opacity:0.5">
     </div>
     <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px">
       <div class="field">
@@ -220,13 +220,13 @@ function openVehicleModal(vehicle = null) {
     <div class="modal-title">${isEdit ? '✏️ 車両を編集' : '🚗 新しい車両を追加'}</div>
     <div class="field">
       <label>車両名 <span style="color:var(--red)">*</span></label>
-      <input type="text" id="v-name" value="${v.name || ''}" placeholder="例: マイカー">
+      <input type="text" id="v-name" value="${esc(v.name || '')}" placeholder="例: マイカー">
     </div>
 
     <div class="field" style="background:var(--bg-card2);padding:12px;border-radius:var(--radius-sm)">
       <label>VIN（車両識別番号・17桁） <span class="hint">海外規格のVINのみ対応</span></label>
       <div style="display:flex;gap:8px">
-        <input type="text" id="v-vin" value="${v.vin || ''}" placeholder="例: WP0AA2A92PS206106" maxlength="17" style="text-transform:uppercase;letter-spacing:0.05em" oninput="this.value=this.value.toUpperCase()">
+        <input type="text" id="v-vin" value="${esc(v.vin || '')}" placeholder="例: WP0AA2A92PS206106" maxlength="17" style="text-transform:uppercase;letter-spacing:0.05em" oninput="this.value=this.value.toUpperCase()">
         <button class="btn-secondary" id="vin-lookup-btn" style="flex-shrink:0" onclick="lookupVin()">🔍 自動入力</button>
       </div>
       <div id="vin-lookup-msg" style="margin-top:6px"></div>
@@ -245,25 +245,25 @@ function openVehicleModal(vehicle = null) {
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
       <div class="field">
         <label>メーカー</label>
-        <input type="text" id="v-mfr" value="${v.manufacturer || ''}" placeholder="トヨタ">
+        <input type="text" id="v-mfr" value="${esc(v.manufacturer || '')}" placeholder="トヨタ">
       </div>
       <div class="field">
         <label>モデル</label>
-        <input type="text" id="v-model" value="${v.model || ''}" placeholder="プリウス">
+        <input type="text" id="v-model" value="${esc(v.model || '')}" placeholder="プリウス">
       </div>
       <div class="field">
         <label>年式</label>
-        <input type="number" id="v-year" value="${v.year || ''}" placeholder="2023" min="1900" max="2099">
+        <input type="number" id="v-year" value="${esc(v.year || '')}" placeholder="2023" min="1900" max="2099">
       </div>
     </div>
     <div class="field">
       <label>メモ</label>
-      <textarea id="v-note" placeholder="任意のメモ">${v.note || ''}</textarea>
+      <textarea id="v-note" placeholder="任意のメモ">${esc(v.note || '')}</textarea>
     </div>
     <div id="vehicle-modal-err" class="error-msg hidden"></div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeModal()">キャンセル</button>
-      <button class="btn-primary" style="width:auto;padding:10px 24px" onclick="saveVehicle('${v.id || ''}')">
+      <button class="btn-primary" style="width:auto;padding:10px 24px" onclick="saveVehicle('${esc(v.id || '')}')">
         ${isEdit ? '更新' : '追加'}
       </button>
     </div>
@@ -338,14 +338,14 @@ async function lookupVin() {
     if (d.year) document.getElementById('v-year').value = d.year
 
     const details = [
-      d.trim ? `トリム: ${d.trim}` : null,
-      d.engine?.fuelType ? `燃料: ${d.engine.fuelType}` : null,
-      d.mpg?.city ? `燃費: 市街地 ${d.mpg.city} / 高速 ${d.mpg.highway || '—'} (MPG)` : null,
+      d.trim ? `トリム: ${esc(d.trim)}` : null,
+      d.engine?.fuelType ? `燃料: ${esc(d.engine.fuelType)}` : null,
+      d.mpg?.city ? `燃費: 市街地 ${esc(d.mpg.city)} / 高速 ${esc(d.mpg.highway || '—')} (MPG)` : null,
     ].filter(Boolean).join(' ／ ')
 
-    msgEl.innerHTML = `<span style="color:var(--green);font-size:12px">✓ ${d.make} ${d.model} (${d.year}) が見つかりました${details ? '<br>' + details : ''}</span>`
+    msgEl.innerHTML = `<span style="color:var(--green);font-size:12px">✓ ${esc(d.make)} ${esc(d.model)} (${esc(d.year)}) が見つかりました${details ? '<br>' + details : ''}</span>`
   } catch (e) {
-    msgEl.innerHTML = `<span style="color:var(--red);font-size:12px">${e.message}</span>`
+    msgEl.innerHTML = `<span style="color:var(--red);font-size:12px">${esc(e.message)}</span>`
   } finally {
     btn.disabled = false
     btn.textContent = '🔍 自動入力'

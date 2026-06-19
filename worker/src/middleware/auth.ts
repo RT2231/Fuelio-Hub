@@ -56,11 +56,70 @@ export async function createJWT(payload: { sub: string; email: string }, secret:
   return `${header}.${body}.${sigB64}`
 }
 
+// パスワードハッシュ: PBKDF2 (SHA-256, 100,000回反復) + ユーザーごとのランダムソルト
+// 保存形式: "pbkdf2$<iterations>$<salt_base64>$<hash_base64>"
+const PBKDF2_ITERATIONS = 100_000
+
 export async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder()
-  const data = encoder.encode(password + 'fuelio_salt_2024')
-  const hash = await crypto.subtle.digest('SHA-256', data)
-  return btoa(String.fromCharCode(...new Uint8Array(hash)))
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(password),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits']
+  )
+
+  const derivedBits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+    keyMaterial,
+    256
+  )
+
+  const saltB64 = btoa(String.fromCharCode(...salt))
+  const hashB64 = btoa(String.fromCharCode(...new Uint8Array(derivedBits)))
+
+  return `pbkdf2$${PBKDF2_ITERATIONS}$${saltB64}$${hashB64}`
+}
+
+export async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  try {
+    const parts = stored.split('$')
+    if (parts.length !== 4 || parts[0] !== 'pbkdf2') return false
+
+    const iterations = parseInt(parts[1], 10)
+    const salt = Uint8Array.from(atob(parts[2]), c => c.charCodeAt(0))
+    const expectedHashB64 = parts[3]
+
+    const encoder = new TextEncoder()
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(password),
+      { name: 'PBKDF2' },
+      false,
+      ['deriveBits']
+    )
+
+    const derivedBits = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+      keyMaterial,
+      256
+    )
+
+    const actualHashB64 = btoa(String.fromCharCode(...new Uint8Array(derivedBits)))
+
+    // タイミング攻撃を避けるため定数時間比較
+    if (actualHashB64.length !== expectedHashB64.length) return false
+    let diff = 0
+    for (let i = 0; i < actualHashB64.length; i++) {
+      diff |= actualHashB64.charCodeAt(i) ^ expectedHashB64.charCodeAt(i)
+    }
+    return diff === 0
+  } catch {
+    return false
+  }
 }
 
 export const authMiddleware = createMiddleware<AppContext>(async (c, next) => {

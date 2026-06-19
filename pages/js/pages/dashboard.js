@@ -19,8 +19,8 @@ async function renderDashboard() {
   container.innerHTML = `
     <div class="page-header">
       <div>
-        <div class="page-title">${typeInfo.icon} ${v.name}</div>
-        <div class="page-subtitle">${v.manufacturer || ''} ${v.model || ''} ${v.year ? '・' + v.year + '年' : ''} ／ ${fuelInfo.icon} ${fuelInfo.label}</div>
+        <div class="page-title">${typeInfo.icon} ${esc(v.name)}</div>
+        <div class="page-subtitle">${esc(v.manufacturer || '')} ${esc(v.model || '')} ${v.year ? '・' + esc(v.year) + '年' : ''} ／ ${fuelInfo.icon} ${fuelInfo.label}</div>
       </div>
       <button class="btn-primary" style="width:auto;padding:10px 20px" onclick="openFuelModal()">⛽ 給油を記録</button>
     </div>

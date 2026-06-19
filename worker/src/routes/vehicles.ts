@@ -167,6 +167,9 @@ vehicleRoutes.post('/:id/members', async (c) => {
   if (!email || !role) {
     return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'メールとロールは必須です' } }, 400)
   }
+  if (!['editor', 'viewer'].includes(role)) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'roleは editor または viewer のみ指定できます' } }, 400)
+  }
 
   const targetUser = await c.env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email.toLowerCase()).first<{ id: string }>()
   if (!targetUser) {
@@ -203,6 +206,27 @@ vehicleRoutes.patch('/:id/members/:targetUserId', async (c) => {
   }
 
   const { role } = await c.req.json()
+
+  // 'owner' への昇格は許可しない（オーナー権限の譲渡は別途検討が必要な操作のため）
+  const validRoles = ['editor', 'viewer']
+  if (!validRoles.includes(role)) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'roleは editor または viewer のみ指定できます' } }, 400)
+  }
+
+  // オーナー自身の役割を変更することはできない
+  if (targetUserId === userId) {
+    return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'オーナー自身の権限は変更できません' } }, 403)
+  }
+
+  // 対象が実際にこの車両のメンバーか確認
+  const target = await c.env.DB.prepare(
+    'SELECT role FROM vehicle_members WHERE vehicle_id = ? AND user_id = ?'
+  ).bind(vehicleId, targetUserId).first<{ role: string }>()
+
+  if (!target) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'メンバーが見つかりません' } }, 404)
+  }
+
   await c.env.DB.prepare(
     'UPDATE vehicle_members SET role = ? WHERE vehicle_id = ? AND user_id = ?'
   ).bind(role, vehicleId, targetUserId).run()

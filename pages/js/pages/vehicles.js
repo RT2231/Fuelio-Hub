@@ -33,27 +33,27 @@ function renderVehiclesList() {
           <div style="font-size:36px;line-height:1">${t.icon}</div>
           <div style="flex:1">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-              <span style="font-size:17px;font-weight:700">${v.name}</span>
+              <span style="font-size:17px;font-weight:700">${esc(v.name)}</span>
               ${isCurrent ? '<span class="badge badge-blue">選択中</span>' : ''}
               <span class="badge badge-gray">${v.user_role === 'owner' ? 'オーナー' : v.user_role === 'editor' ? '編集者' : '閲覧者'}</span>
             </div>
             <div style="font-size:13px;color:var(--text-2)">
-              ${[v.manufacturer, v.model, v.year ? v.year+'年' : ''].filter(Boolean).join(' ・ ')}
+              ${esc([v.manufacturer, v.model, v.year ? v.year+'年' : ''].filter(Boolean).join(' ・ '))}
               ${v.manufacturer || v.model ? '／' : ''} ${f.icon} ${f.label} ・ ${t.label}
             </div>
-            ${v.vin ? `<div style="font-size:11px;color:var(--text-3);margin-top:2px;font-family:monospace;letter-spacing:0.03em">VIN: ${v.vin}</div>` : ''}
-            ${v.note ? `<div style="font-size:12px;color:var(--text-3);margin-top:4px">${v.note}</div>` : ''}
+            ${v.vin ? `<div style="font-size:11px;color:var(--text-3);margin-top:2px;font-family:monospace;letter-spacing:0.03em">VIN: ${esc(v.vin)}</div>` : ''}
+            ${v.note ? `<div style="font-size:12px;color:var(--text-3);margin-top:4px">${esc(v.note)}</div>` : ''}
           </div>
-          <div style="display:flex;gap:6px;flex-shrink:0">
-            ${!isCurrent ? `<button class="btn-secondary" onclick="selectVehicle(${JSON.stringify(v).replace(/"/g,"'")});renderVehiclesList()">選択</button>` : ''}
-            ${v.vin ? `<button class="btn-secondary" onclick="showVehicleSpecs('${v.vin}','${v.name}')">📋 スペック</button>` : ''}
-            ${v.user_role !== 'viewer' ? `<button class="btn-secondary" onclick="openVehicleModal(${JSON.stringify(v).replace(/"/g,"'")})">✏️ 編集</button>` : ''}
-            ${v.user_role === 'owner' ? `<button class="btn-danger" onclick="deleteVehicle('${v.id}')">削除</button>` : ''}
+          <div style="display:flex;gap:6px;flex-shrink:0" data-obj="${dataAttr(v)}">
+            ${!isCurrent ? `<button class="btn-secondary" onclick="selectVehicle(readDataAttr(this.parentElement));renderVehiclesList()">選択</button>` : ''}
+            ${v.vin ? `<button class="btn-secondary" onclick="showVehicleSpecs(readDataAttr(this.parentElement).vin, readDataAttr(this.parentElement).name)">📋 スペック</button>` : ''}
+            ${v.user_role !== 'viewer' ? `<button class="btn-secondary" onclick="openVehicleModal(readDataAttr(this.parentElement))">✏️ 編集</button>` : ''}
+            ${v.user_role === 'owner' ? `<button class="btn-danger" onclick="deleteVehicle(readDataAttr(this.parentElement).id)">削除</button>` : ''}
           </div>
         </div>
         ${v.user_role === 'owner' ? `
-          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:8px">
-            <button class="btn-secondary" onclick="showMembersModal('${v.id}','${v.name}')">👥 メンバー管理</button>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:8px" data-obj="${dataAttr(v)}">
+            <button class="btn-secondary" onclick="showMembersModal(readDataAttr(this.parentElement).id, readDataAttr(this.parentElement).name)">👥 メンバー管理</button>
           </div>
         ` : ''}
       </div>
@@ -82,7 +82,7 @@ async function deleteVehicle(id) {
 // メンバー管理モーダル
 async function showMembersModal(vehicleId, vehicleName) {
   showModal(`
-    <div class="modal-title">👥 ${vehicleName} のメンバー</div>
+    <div class="modal-title">👥 ${esc(vehicleName)} のメンバー</div>
     <div id="members-list"><div class="page-loading"><div class="spinner"></div></div></div>
     <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
       <div style="font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:8px">メンバーを追加</div>
@@ -92,7 +92,7 @@ async function showMembersModal(vehicleId, vehicleName) {
           <option value="editor">編集者</option>
           <option value="viewer">閲覧者</option>
         </select>
-        <button class="btn-secondary" onclick="addMember('${vehicleId}')">追加</button>
+        <button class="btn-secondary" onclick="addMember('${esc(vehicleId)}')">追加</button>
       </div>
       <div id="member-err" class="error-msg hidden" style="margin-top:8px"></div>
     </div>
@@ -117,17 +117,17 @@ async function loadMembers(vehicleId) {
     el.innerHTML = members.map(m => `
       <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
         <div style="flex:1">
-          <div style="font-size:13px;font-weight:600">${m.display_name || m.email}</div>
-          <div style="font-size:11px;color:var(--text-3)">${m.email}</div>
+          <div style="font-size:13px;font-weight:600">${esc(m.display_name || m.email)}</div>
+          <div style="font-size:11px;color:var(--text-3)">${esc(m.email)}</div>
         </div>
         <span class="badge ${m.role==='owner'?'badge-blue':m.role==='editor'?'badge-green':'badge-gray'}">
           ${m.role === 'owner' ? 'オーナー' : m.role === 'editor' ? '編集者' : '閲覧者'}
         </span>
-        ${m.role !== 'owner' ? `<button class="btn-icon" onclick="removeMember('${vehicleId}','${m.user_id}')">✕</button>` : ''}
+        ${m.role !== 'owner' ? `<button class="btn-icon" data-vid="${esc(vehicleId)}" data-uid="${esc(m.user_id)}" onclick="removeMember(this.dataset.vid, this.dataset.uid)">✕</button>` : ''}
       </div>
     `).join('')
   } catch (e) {
-    el.innerHTML = `<p style="color:var(--red);font-size:13px">${e.message}</p>`
+    el.innerHTML = `<p style="color:var(--red);font-size:13px">${esc(e.message)}</p>`
   }
 }
 
@@ -184,7 +184,7 @@ async function renderTokensPage() {
     <div class="page-header">
       <div>
         <div class="page-title">🔑 APIトークン</div>
-        <div class="page-subtitle">${v.name} ／ 外部連携用トークン</div>
+        <div class="page-subtitle">${esc(v.name)} ／ 外部連携用トークン</div>
       </div>
       <button class="btn-primary" style="width:auto;padding:10px 18px" onclick="openCreateTokenModal()">＋ トークンを作成</button>
     </div>
@@ -193,7 +193,7 @@ async function renderTokensPage() {
         <div style="font-size:13px;color:var(--text-2);line-height:1.7">
           <strong>APIトークン</strong>を使うと、外部アプリやスクリプトからデータにアクセスできます。<br>
           トークンは作成時にのみ表示されます。必ず安全な場所に保存してください。<br>
-          エンドポイント: <code style="font-size:11px;background:var(--bg-deep);padding:2px 6px;border-radius:4px">${document.querySelector && CONFIG.API_BASE}/public/vehicles/${v.id}/fuel-records</code>
+          エンドポイント: <code style="font-size:11px;background:var(--bg-deep);padding:2px 6px;border-radius:4px">${esc(CONFIG.API_BASE)}/public/vehicles/${esc(v.id)}/fuel-records</code>
         </div>
       </div>
       <div id="tokens-list"><div class="page-loading"><div class="spinner"></div></div></div>
@@ -221,7 +221,7 @@ async function loadTokens() {
       <tbody>
         ${tokens.map(t => `
           <tr>
-            <td style="font-weight:600">${t.name}</td>
+            <td style="font-weight:600">${esc(t.name)}</td>
             <td>
               <span class="badge ${t.visibility==='public'||t.visibility==='open'?'badge-green':'badge-gray'}">
                 ${t.visibility === 'public' ? '🌐 パブリック' : t.visibility === 'open' ? '🔓 オープン' : '🔒 プライベート'}
@@ -229,13 +229,13 @@ async function loadTokens() {
             </td>
             <td style="color:var(--text-2);font-size:12px">${t.last_used_at ? fmtDate(t.last_used_at) : '未使用'}</td>
             <td style="color:var(--text-2);font-size:12px">${fmtDate(t.created_at)}</td>
-            <td><button class="btn-danger" onclick="deleteToken('${t.id}')">削除</button></td>
+            <td><button class="btn-danger" data-id="${esc(t.id)}" onclick="deleteToken(this.dataset.id)">削除</button></td>
           </tr>
         `).join('')}
       </tbody>
     </table></div>`
   } catch (e) {
-    el.innerHTML = `<div class="error-msg">${e.message}</div>`
+    el.innerHTML = `<div class="error-msg">${esc(e.message)}</div>`
   }
 }
 
@@ -284,13 +284,13 @@ async function createToken() {
       <div class="field">
         <label>APIトークン</label>
         <div style="display:flex;gap:8px">
-          <input type="text" value="${token}" id="tk-display" readonly style="font-family:monospace;font-size:12px">
-          <button class="btn-secondary" onclick="navigator.clipboard.writeText('${token}').then(()=>toast('コピーしました'))">📋</button>
+          <input type="text" value="${esc(token)}" id="tk-display" readonly style="font-family:monospace;font-size:12px">
+          <button class="btn-secondary" onclick="navigator.clipboard.writeText(document.getElementById('tk-display').value).then(()=>toast('コピーしました'))">📋</button>
         </div>
       </div>
       <div class="field">
         <label>使用例（curl）</label>
-        <textarea readonly style="font-size:11px;font-family:monospace;height:80px">curl -H "X-API-Token: ${token}" ${CONFIG.API_BASE}/public/vehicles/${appState.currentVehicle.id}/fuel-records</textarea>
+        <textarea readonly id="tk-curl-example" style="font-size:11px;font-family:monospace;height:80px">curl -H "X-API-Token: ${esc(token)}" ${esc(CONFIG.API_BASE)}/public/vehicles/${esc(appState.currentVehicle.id)}/fuel-records</textarea>
       </div>
       <div class="modal-actions">
         <button class="btn-primary" style="width:auto;padding:10px 24px" onclick="closeModal();loadTokens()">確認した</button>
@@ -317,7 +317,7 @@ async function deleteToken(id) {
 // ===== Auto.dev: スペック確認 =====
 async function showVehicleSpecs(vin, vehicleName) {
   showModal(`
-    <div class="modal-title">📋 ${vehicleName} のスペック</div>
+    <div class="modal-title">📋 ${esc(vehicleName)} のスペック</div>
     <div id="specs-content"><div class="page-loading"><div class="spinner"></div></div></div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeModal()">閉じる</button>
@@ -357,7 +357,7 @@ async function showVehicleSpecs(vin, vehicleName) {
         <table>
           <tbody>
             ${rows.map(([label, val]) => `
-              <tr><td style="color:var(--text-2);width:40%">${label}</td><td style="font-weight:600">${val}</td></tr>
+              <tr><td style="color:var(--text-2);width:40%">${esc(label)}</td><td style="font-weight:600">${esc(val)}</td></tr>
             `).join('')}
           </tbody>
         </table>
@@ -367,6 +367,6 @@ async function showVehicleSpecs(vin, vehicleName) {
       </div>
     `
   } catch (e) {
-    content.innerHTML = `<div class="error-msg">${e.message}</div>`
+    content.innerHTML = `<div class="error-msg">${esc(e.message)}</div>`
   }
 }

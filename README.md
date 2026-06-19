@@ -159,7 +159,8 @@ fuelio-hub/
 ├── worker/                    # Cloudflare Workers (バックエンドAPI)
 │   ├── schema.sql              # D1用スキーマ（ダッシュボードのConsoleで実行）
 │   ├── migrations/
-│   │   └── 001_add_vin.sql     # 既存DBにVINカラムを追加するマイグレーション
+│   │   ├── 001_add_vin.sql     # 既存DBにVINカラムを追加するマイグレーション
+│   │   └── 002_clear_test_data_password_migration.sql  # パスワードハッシュ方式変更に伴うテストデータクリア
 │   ├── wrangler.toml            # Worker設定（テンプレート）
 │   └── src/
 │       ├── index.ts             # エントリポイント
@@ -214,6 +215,24 @@ fuelio-hub/
 - CSVエクスポート（給油記録）
 - レスポンシブ対応（モバイルはボトムナビ + ハンバーガーメニュー）
 - **Auto.dev連携**（任意・APIキー設定時のみ有効）: VINからメーカー・モデル・年式を自動入力、登録済み車両のスペック詳細確認
+
+## セキュリティ対応状況
+
+- **パスワードハッシュ**: PBKDF2（SHA-256、100,000回反復）+ ユーザーごとのランダムソルトで保存しています。比較はタイミング攻撃を避けるため定数時間比較を使用しています。
+  - ⚠️ 過去のバージョンでは固定ソルト+SHA-256という脆弱な方式を使用していました。この方式変更により、**過去に作成したアカウントのパスワードは検証できなくなります**（ハッシュ形式に互換性がないため）。本番運用前であれば、`worker/migrations/002_clear_test_data_password_migration.sql`をD1のConsoleタブで実行し、テストユーザーを一度クリアしてから運用を開始してください。
+- **XSS対策**: ユーザー入力（車両名・メモ・スタンド名・表示名・メンバー情報など）をHTMLに埋め込む箇所は、すべて`pages/js/config.js`の`esc()`関数でエスケープしています。オブジェクトを`onclick`ハンドラに渡す際も、`data-*`属性経由（`dataAttr()`/`readDataAttr()`）にして、属性破壊によるインジェクションを防いでいます。
+- **CSVエクスポート**: Excel等で問題になりうるCSVインジェクション（`=`, `+`, `-`, `@`で始まるセル）に対する無害化処理を行っています。
+- **環境変数・Secret管理**: `JWT_SECRET`や`AUTODEV_API_KEY`のような機密情報は、`worker/wrangler.toml`に名前を一切記述していません（同名キーが`[vars]`にあると、デプロイのたびにダッシュボードのSecretが上書きされてしまうため）。これらは必ずCloudflareダッシュボードのSettings → Variablesで、Encrypt（Secret化）を有効にして設定してください。
+- **権限管理**: 車両メンバーのロール変更APIは、`'owner'`への昇格や任意の文字列の指定を拒否し、`editor`/`viewer`のみ許可しています。
+
+### ローカル開発時の環境変数
+
+`wrangler dev`でローカル動作確認する場合、`worker/.dev.vars`ファイル（gitignore対象）を作成し、以下のように記述してください。
+
+```
+JWT_SECRET=任意のローカル開発用シークレット
+AUTODEV_API_KEY=
+```
 
 ## 既知の制約・今後の拡張ポイント
 

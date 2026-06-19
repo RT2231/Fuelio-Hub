@@ -12,7 +12,7 @@ async function renderMaintenancePage() {
     <div class="page-header">
       <div>
         <div class="page-title">🔧 メンテナンス記録</div>
-        <div class="page-subtitle">${appState.currentVehicle.name}</div>
+        <div class="page-subtitle">${esc(appState.currentVehicle.name)}</div>
       </div>
       <button class="btn-primary" style="width:auto;padding:10px 18px" onclick="openMaintModal()">＋ 記録を追加</button>
     </div>
@@ -75,14 +75,14 @@ function renderMaintTable() {
         <td>
           <span class="badge badge-gray">${cat.icon} ${cat.label}</span>
         </td>
-        <td>${r.title}</td>
+        <td>${esc(r.title)}</td>
         <td class="td-num">${fmtCost(r.cost)}</td>
         <td class="td-num">${r.odometer ? fmtOdo(r.odometer) : '—'}</td>
-        <td style="color:var(--text-2);font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis">${r.description || ''}</td>
+        <td style="color:var(--text-2);font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(r.description || '')}</td>
         <td>
-          <div style="display:flex;gap:4px">
-            <button class="btn-icon" onclick="openMaintModal(${JSON.stringify(r).replace(/"/g,"'")})">✏️</button>
-            <button class="btn-icon" onclick="deleteMaintRecord('${r.id}')">🗑️</button>
+          <div style="display:flex;gap:4px" data-obj="${dataAttr(r)}">
+            <button class="btn-icon" onclick="openMaintModal(readDataAttr(this.parentElement))">✏️</button>
+            <button class="btn-icon" onclick="deleteMaintRecord(readDataAttr(this.parentElement).id)">🗑️</button>
           </div>
         </td>
       </tr>
@@ -114,7 +114,7 @@ function openMaintModal(record = null) {
     <div class="modal-title">${isEdit ? '✏️ 整備記録を編集' : '🔧 整備記録を追加'}</div>
     <div class="field">
       <label>タイトル <span style="color:var(--red)">*</span></label>
-      <input type="text" id="m-title" value="${r.title || ''}" placeholder="オイル交換">
+      <input type="text" id="m-title" value="${esc(r.title || '')}" placeholder="オイル交換">
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="field">
@@ -123,27 +123,27 @@ function openMaintModal(record = null) {
       </div>
       <div class="field">
         <label>日付</label>
-        <input type="date" id="m-date" value="${r.maintenance_date || today}">
+        <input type="date" id="m-date" value="${esc(r.maintenance_date || today)}">
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="field">
         <label>費用(円)</label>
-        <input type="number" id="m-cost" value="${r.cost || ''}" placeholder="5000">
+        <input type="number" id="m-cost" value="${esc(r.cost || '')}" placeholder="5000">
       </div>
       <div class="field">
         <label>走行距離(km)</label>
-        <input type="number" id="m-odo" value="${r.odometer || ''}" placeholder="12345">
+        <input type="number" id="m-odo" value="${esc(r.odometer || '')}" placeholder="12345">
       </div>
     </div>
     <div class="field">
       <label>メモ</label>
-      <textarea id="m-desc" placeholder="作業内容の詳細">${r.description || ''}</textarea>
+      <textarea id="m-desc" placeholder="作業内容の詳細">${esc(r.description || '')}</textarea>
     </div>
     <div id="maint-modal-err" class="error-msg hidden"></div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeModal()">キャンセル</button>
-      <button class="btn-primary" style="width:auto;padding:10px 24px" onclick="saveMaintRecord('${r.id || ''}')">
+      <button class="btn-primary" style="width:auto;padding:10px 24px" onclick="saveMaintRecord('${esc(r.id || '')}')">
         ${isEdit ? '更新' : '追加'}
       </button>
     </div>

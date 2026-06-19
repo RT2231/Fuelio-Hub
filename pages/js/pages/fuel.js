@@ -105,11 +105,11 @@ function renderFuelTable() {
             : '<span style="color:var(--text-3)">—</span>'}
         </td>
         <td>${r.is_full_tank ? '<span class="badge badge-blue">満タン</span>' : '<span class="badge badge-gray">部分</span>'}</td>
-        <td style="color:var(--text-3);font-size:12px">${r.station_name || ''}</td>
+        <td style="color:var(--text-3);font-size:12px">${esc(r.station_name || '')}</td>
         <td>
-          <div style="display:flex;gap:4px">
-            <button class="btn-icon" title="編集" onclick="openFuelModal(${JSON.stringify(r).replace(/"/g,"'")})">✏️</button>
-            <button class="btn-icon" title="削除" onclick="deleteFuelRecord('${r.id}')">🗑️</button>
+          <div style="display:flex;gap:4px" data-obj="${dataAttr(r)}">
+            <button class="btn-icon" title="編集" onclick="openFuelModal(readDataAttr(this.parentElement))">✏️</button>
+            <button class="btn-icon" title="削除" onclick="deleteFuelRecord(readDataAttr(this.parentElement).id)">🗑️</button>
           </div>
         </td>
       </tr>
@@ -160,31 +160,31 @@ function openFuelModal(record = null) {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="field">
         <label>日付 <span style="color:var(--red)">*</span></label>
-        <input type="date" id="fr-date" value="${r.date || today}">
+        <input type="date" id="fr-date" value="${esc(r.date || today)}">
       </div>
       <div class="field">
         <label>オドメーター(km) <span style="color:var(--red)">*</span></label>
-        <input type="number" id="fr-odo" value="${r.odometer || ''}" placeholder="12345" step="0.1">
+        <input type="number" id="fr-odo" value="${esc(r.odometer || '')}" placeholder="12345" step="0.1">
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
       <div class="field">
         <label>給油量(L)</label>
-        <input type="number" id="fr-amount" value="${r.fuel_amount || ''}" placeholder="30.5" step="0.01" oninput="autoCalcCost()">
+        <input type="number" id="fr-amount" value="${esc(r.fuel_amount || '')}" placeholder="30.5" step="0.01" oninput="autoCalcCost()">
       </div>
       <div class="field">
         <label>単価(円/L)</label>
-        <input type="number" id="fr-price" value="${r.fuel_price || ''}" placeholder="170" step="0.1" oninput="autoCalcCost()">
+        <input type="number" id="fr-price" value="${esc(r.fuel_price || '')}" placeholder="170" step="0.1" oninput="autoCalcCost()">
       </div>
       <div class="field">
         <label>合計金額(円)</label>
-        <input type="number" id="fr-total" value="${r.total_cost || ''}" placeholder="5100">
+        <input type="number" id="fr-total" value="${esc(r.total_cost || '')}" placeholder="5100">
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="field">
         <label>スタンド名</label>
-        <input type="text" id="fr-station" value="${r.station_name || ''}" placeholder="エネオス 〇〇店">
+        <input type="text" id="fr-station" value="${esc(r.station_name || '')}" placeholder="エネオス 〇〇店">
       </div>
       <div class="field">
         <label>天気</label>
@@ -205,12 +205,12 @@ function openFuelModal(record = null) {
     </div>
     <div class="field">
       <label>メモ</label>
-      <textarea id="fr-memo" placeholder="任意のメモ">${r.memo || ''}</textarea>
+      <textarea id="fr-memo" placeholder="任意のメモ">${esc(r.memo || '')}</textarea>
     </div>
     <div id="fuel-modal-err" class="error-msg hidden"></div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeModal()">キャンセル</button>
-      <button class="btn-primary" style="width:auto;padding:10px 24px" onclick="saveFuelRecord('${r.id || ''}')">
+      <button class="btn-primary" style="width:auto;padding:10px 24px" onclick="saveFuelRecord('${esc(r.id || '')}')">
         ${isEdit ? '更新' : '記録'}
       </button>
     </div>
@@ -276,12 +276,21 @@ async function deleteFuelRecord(id) {
 
 function exportFuelCSV() {
   if (!fuelRecords.length) { toast('エクスポートするデータがありません', 'error'); return }
+
+  // CSVセル値のサニタイズ: ダブルクォートのエスケープと、
+  // Excel等でCSVインジェクションにつながる先頭文字(=,+,-,@)に対する無害化
+  function csvCell(v) {
+    let s = String(v ?? '')
+    if (/^[=+\-@]/.test(s)) s = "'" + s
+    return `"${s.replace(/"/g, '""')}"`
+  }
+
   const headers = ['日付','オドメーター(km)','給油量(L)','単価(円/L)','合計(円)','燃費(km/L)','満タン','スタンド','天気','メモ']
   const rows = fuelRecords.map(r => [
     r.date, r.odometer, r.fuel_amount ?? '', r.fuel_price ?? '', r.total_cost ?? '',
     r.efficiency ?? '', r.is_full_tank ? '満タン' : '部分', r.station_name ?? '', r.weather ?? '', r.memo ?? ''
   ])
-  const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n')
+  const csv = [headers, ...rows].map(r => r.map(csvCell).join(',')).join('\n')
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

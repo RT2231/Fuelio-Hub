@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { createJWT, hashPassword, generateId, authMiddleware } from '../middleware/auth'
+import { createJWT, hashPassword, verifyPassword, generateId, authMiddleware } from '../middleware/auth'
 import type { AppContext, Env } from '../types'
 
 export const authRoutes = new Hono<AppContext>()
@@ -54,8 +54,8 @@ authRoutes.post('/login', async (c) => {
     return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'メールまたはパスワードが正しくありません' } }, 401)
   }
 
-  const passwordHash = await hashPassword(password)
-  if (passwordHash !== user.password_hash) {
+  const isValid = await verifyPassword(password, user.password_hash)
+  if (!isValid) {
     return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'メールまたはパスワードが正しくありません' } }, 401)
   }
 
@@ -111,8 +111,8 @@ authRoutes.post('/change-password', authMiddleware, async (c) => {
   const user = await c.env.DB.prepare('SELECT password_hash FROM users WHERE id = ?').bind(userId).first<{ password_hash: string }>()
   if (!user) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'ユーザーが見つかりません' } }, 404)
 
-  const currentHash = await hashPassword(current_password)
-  if (currentHash !== user.password_hash) {
+  const isValid = await verifyPassword(current_password, user.password_hash)
+  if (!isValid) {
     return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: '現在のパスワードが正しくありません' } }, 401)
   }
 

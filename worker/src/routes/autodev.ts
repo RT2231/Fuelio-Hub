@@ -97,7 +97,6 @@ autodevRoutes.get('/vin/:vin', async (c) => {
       transmission: raw.transmission?.name || null,
       numOfDoors: raw.numOfDoors || null,
       baseMsrp: raw.price?.baseMsrp || null,
-      _raw: raw,
     }
 
     return c.json({ success: true, data: result })

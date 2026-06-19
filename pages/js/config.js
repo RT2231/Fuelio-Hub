@@ -3,6 +3,34 @@ const CONFIG = {
   API_BASE: 'https://fuelio-hub-api.shirokuma0822.workers.dev/api/v1',
 }
 
+// ===== XSS対策: HTMLエスケープ =====
+// テキストやHTML属性値にユーザー入力を埋め込む際は、必ずこの関数を通すこと。
+function esc(val) {
+  if (val == null) return ''
+  return String(val)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+// オブジェクトを onclick="fn(JSON)" のように直接埋め込むのは危険（値にクォートが
+// 含まれると属性が破壊されHTML/JSが注入される）。代わりに data-* 属性へエスケープ
+// した JSON を格納し、クリック時に dataset から安全に読み出すためのヘルパー。
+// 使い方:
+//   HTML側: data-obj="${dataAttr(record)}" onclick="handler(readDataAttr(this))"
+function dataAttr(obj) {
+  return esc(JSON.stringify(obj))
+}
+function readDataAttr(el, key = 'obj') {
+  try {
+    return JSON.parse(el.dataset[key])
+  } catch {
+    return null
+  }
+}
+
 // 燃料タイプ
 const FUEL_TYPES = {
   gasoline:   { label: 'レギュラー', icon: '⛽' },

@@ -12,7 +12,7 @@ async function renderStatsPage() {
     <div class="page-header">
       <div>
         <div class="page-title">📈 統計・分析</div>
-        <div class="page-subtitle">${appState.currentVehicle.name}</div>
+        <div class="page-subtitle">${esc(appState.currentVehicle.name)}</div>
       </div>
     </div>
     <div class="page-body">
