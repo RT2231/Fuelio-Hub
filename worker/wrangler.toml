@@ -13,7 +13,7 @@ database_name = "fuelio-hub-db"
 database_id = "b95e13e7-65bc-4eaf-adad-2ab3c91967f0"
 
 [vars]
-# 機密情報（JWT_SECRET, AUTODEV_API_KEY）はこのファイルに一切記述しません。
+# 機密情報（JWT_SECRET等）はこのファイルに一切記述しません。
 # Cloudflareダッシュボードの Settings > Variables で "Encrypt" をONにして設定してください。
 # ここに同名の変数を書くと、デプロイのたびにダッシュボードのSecretがこの値で上書きされてしまうため、
 # 意図的に記述していません。

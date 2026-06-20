@@ -8,7 +8,6 @@ import { maintenanceRoutes } from './routes/maintenance'
 import { statsRoutes } from './routes/stats'
 import { tokenRoutes } from './routes/tokens'
 import { publicRoutes } from './routes/public'
-import { autodevRoutes } from './routes/autodev'
 import type { Env } from './types'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -37,7 +36,6 @@ api.route('/maintenance', maintenanceRoutes)
 api.route('/stats', statsRoutes)
 api.route('/tokens', tokenRoutes)
 api.route('/public', publicRoutes)
-api.route('/autodev', autodevRoutes)
 
 app.route('/api/v1', api)
 

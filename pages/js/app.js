@@ -224,12 +224,8 @@ function openVehicleModal(vehicle = null) {
     </div>
 
     <div class="field" style="background:var(--bg-card2);padding:12px;border-radius:var(--radius-sm)">
-      <label>VIN（車両識別番号・17桁） <span class="hint">海外規格のVINのみ対応</span></label>
-      <div style="display:flex;gap:8px">
-        <input type="text" id="v-vin" value="${esc(v.vin || '')}" placeholder="例: WP0AA2A92PS206106" maxlength="17" style="text-transform:uppercase;letter-spacing:0.05em" oninput="this.value=this.value.toUpperCase()">
-        <button class="btn-secondary" id="vin-lookup-btn" style="flex-shrink:0" onclick="lookupVin()">🔍 自動入力</button>
-      </div>
-      <div id="vin-lookup-msg" style="margin-top:6px"></div>
+      <label>VIN（車両識別番号・任意） <span class="hint">分かれば入力（17桁）</span></label>
+      <input type="text" id="v-vin" value="${esc(v.vin || '')}" placeholder="例: WP0AA2A92PS206106" maxlength="17" style="text-transform:uppercase;letter-spacing:0.05em" oninput="this.value=this.value.toUpperCase()">
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -309,46 +305,6 @@ async function saveVehicle(vehicleId) {
   } catch (e) {
     errEl.textContent = e.message
     errEl.classList.remove('hidden')
-  }
-}
-
-// ===== Auto.dev: VIN検索 =====
-async function lookupVin() {
-  const vinInput = document.getElementById('v-vin')
-  const msgEl = document.getElementById('vin-lookup-msg')
-  const btn = document.getElementById('vin-lookup-btn')
-  const vin = vinInput.value.trim().toUpperCase()
-
-  if (vin.length !== 17) {
-    msgEl.innerHTML = '<span style="color:var(--red);font-size:12px">VINは17文字で入力してください</span>'
-    return
-  }
-
-  btn.disabled = true
-  btn.textContent = '検索中...'
-  msgEl.innerHTML = ''
-
-  try {
-    const res = await api.get(`/autodev/vin/${vin}`)
-    const d = res.data
-
-    // フォームへ自動入力（既存値があれば上書き確認なしで反映）
-    if (d.make) document.getElementById('v-mfr').value = d.make
-    if (d.model) document.getElementById('v-model').value = d.model
-    if (d.year) document.getElementById('v-year').value = d.year
-
-    const details = [
-      d.trim ? `トリム: ${esc(d.trim)}` : null,
-      d.engine?.fuelType ? `燃料: ${esc(d.engine.fuelType)}` : null,
-      d.mpg?.city ? `燃費: 市街地 ${esc(d.mpg.city)} / 高速 ${esc(d.mpg.highway || '—')} (MPG)` : null,
-    ].filter(Boolean).join(' ／ ')
-
-    msgEl.innerHTML = `<span style="color:var(--green);font-size:12px">✓ ${esc(d.make)} ${esc(d.model)} (${esc(d.year)}) が見つかりました${details ? '<br>' + details : ''}</span>`
-  } catch (e) {
-    msgEl.innerHTML = `<span style="color:var(--red);font-size:12px">${esc(e.message)}</span>`
-  } finally {
-    btn.disabled = false
-    btn.textContent = '🔍 自動入力'
   }
 }
 
