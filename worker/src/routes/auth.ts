@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { createJWT, hashPassword, verifyPassword, generateId, authMiddleware } from '../middleware/auth'
+import { createSession, revokeSession, revokeAllSessionsForUser, hashPassword, verifyPassword, generateId, authMiddleware } from '../middleware/auth'
 import type { AppContext, Env } from '../types'
 
 export const authRoutes = new Hono<AppContext>()
@@ -27,7 +27,7 @@ authRoutes.post('/register', async (c) => {
     'INSERT INTO users (id, email, password_hash, display_name) VALUES (?, ?, ?, ?)'
   ).bind(id, email.toLowerCase(), passwordHash, display_name || null).run()
 
-  const token = await createJWT({ sub: id, email: email.toLowerCase() }, c.env.JWT_SECRET)
+  const token = await createSession(c.env.DB, id, c.env.JWT_SECRET)
 
   return c.json({
     success: true,
@@ -59,7 +59,7 @@ authRoutes.post('/login', async (c) => {
     return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'メールまたはパスワードが正しくありません' } }, 401)
   }
 
-  const token = await createJWT({ sub: user.id, email: user.email }, c.env.JWT_SECRET)
+  const token = await createSession(c.env.DB, user.id, c.env.JWT_SECRET)
 
   return c.json({
     success: true,
@@ -68,6 +68,15 @@ authRoutes.post('/login', async (c) => {
       user: { id: user.id, email: user.email, display_name: user.display_name }
     }
   })
+})
+
+// POST /api/v1/auth/logout
+// 現在のトークンに対応するセッションのみをD1から削除し、即座に失効させる。
+authRoutes.post('/logout', authMiddleware, async (c) => {
+  const authHeader = c.req.header('Authorization')
+  const token = authHeader!.slice(7)
+  await revokeSession(c.env.DB, token, c.env.JWT_SECRET)
+  return c.json({ success: true, data: { message: 'ログアウトしました' } })
 })
 
 // GET /api/v1/auth/me
@@ -119,5 +128,11 @@ authRoutes.post('/change-password', authMiddleware, async (c) => {
   const newHash = await hashPassword(new_password)
   await c.env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(newHash, userId).run()
 
-  return c.json({ success: true, data: { message: 'パスワードを変更しました' } })
+  // パスワード変更は「乗っ取られた可能性がある」シグナルでもあるため、
+  // 他の端末も含めて全セッションを失効させ、今この操作をしているクライアントの分だけ
+  // 新しいトークンを発行し直す。
+  await revokeAllSessionsForUser(c.env.DB, userId)
+  const newToken = await createSession(c.env.DB, userId, c.env.JWT_SECRET)
+
+  return c.json({ success: true, data: { message: 'パスワードを変更しました', token: newToken } })
 })

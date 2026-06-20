@@ -1,37 +1,13 @@
 import { createMiddleware } from 'hono/factory'
 import type { AppContext } from '../types'
 
-// Simple JWT implementation using Web Crypto API
-async function verifyJWT(token: string, secret: string): Promise<{ sub: string; email: string } | null> {
-  try {
-    const parts = token.split('.')
-    if (parts.length !== 3) return null
+// セッショントークンの形式: "<sessionId>.<signature>"
+// sessionId自体はDBに保存しない平文ID。signatureはHMAC-SHA256でsessionIdに署名したもの。
+// トークンの検証は「署名が正しいか」のみをここで確認し、実際にセッションが
+// 有効かどうか(ログアウトされていないか、期限切れでないか)はD1のsessionsテーブルを見て判断する。
+// これにより、ログアウト時にD1からセッション行を削除するだけでトークンを即時失効できる。
 
-    const encoder = new TextEncoder()
-    const key = await crypto.subtle.importKey(
-      'raw',
-      encoder.encode(secret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['verify']
-    )
-
-    const data = encoder.encode(`${parts[0]}.${parts[1]}`)
-    const sig = Uint8Array.from(atob(parts[2].replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))
-
-    const valid = await crypto.subtle.verify('HMAC', key, sig, data)
-    if (!valid) return null
-
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
-    if (payload.exp < Math.floor(Date.now() / 1000)) return null
-
-    return { sub: payload.sub, email: payload.email }
-  } catch {
-    return null
-  }
-}
-
-export async function createJWT(payload: { sub: string; email: string }, secret: string, expiresInSeconds = 86400 * 30): Promise<string> {
+async function signSessionId(sessionId: string, secret: string): Promise<string> {
   const encoder = new TextEncoder()
   const key = await crypto.subtle.importKey(
     'raw',
@@ -40,20 +16,62 @@ export async function createJWT(payload: { sub: string; email: string }, secret:
     false,
     ['sign']
   )
+  const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(sessionId))
+  return btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+}
 
-  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
-  const body = btoa(JSON.stringify({
-    sub: payload.sub,
-    email: payload.email,
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + expiresInSeconds
-  })).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+async function verifySessionToken(token: string, secret: string): Promise<string | null> {
+  const dotIndex = token.lastIndexOf('.')
+  if (dotIndex === -1) return null
 
-  const data = encoder.encode(`${header}.${body}`)
-  const sig = await crypto.subtle.sign('HMAC', key, data)
-  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+  const sessionId = token.slice(0, dotIndex)
+  const givenSig = token.slice(dotIndex + 1)
+  if (!sessionId || !givenSig) return null
 
-  return `${header}.${body}.${sigB64}`
+  const expectedSig = await signSessionId(sessionId, secret)
+
+  // 定数時間比較
+  if (expectedSig.length !== givenSig.length) return null
+  let diff = 0
+  for (let i = 0; i < expectedSig.length; i++) {
+    diff |= expectedSig.charCodeAt(i) ^ givenSig.charCodeAt(i)
+  }
+  return diff === 0 ? sessionId : null
+}
+
+async function hashSessionId(sessionId: string): Promise<string> {
+  const data = new TextEncoder().encode(sessionId)
+  const hash = await crypto.subtle.digest('SHA-256', data)
+  return btoa(String.fromCharCode(...new Uint8Array(hash)))
+}
+
+const SESSION_DURATION_SECONDS = 86400 * 30 // 30日
+
+// ログイン/登録成功時に呼び出す。D1にセッション行を作成し、クライアントに返すトークンを生成する。
+export async function createSession(db: D1Database, userId: string, secret: string): Promise<string> {
+  const sessionId = crypto.randomUUID()
+  const tokenHash = await hashSessionId(sessionId)
+  const expiresAt = new Date(Date.now() + SESSION_DURATION_SECONDS * 1000).toISOString()
+
+  await db.prepare(
+    'INSERT INTO sessions (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)'
+  ).bind(crypto.randomUUID(), userId, tokenHash, expiresAt).run()
+
+  const signature = await signSessionId(sessionId, secret)
+  return `${sessionId}.${signature}`
+}
+
+// ログアウト時に呼び出す。該当セッションをD1から削除し、以後そのトークンを無効化する。
+export async function revokeSession(db: D1Database, token: string, secret: string): Promise<void> {
+  const sessionId = await verifySessionToken(token, secret)
+  if (!sessionId) return
+  const tokenHash = await hashSessionId(sessionId)
+  await db.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(tokenHash).run()
+}
+
+// パスワード変更時など、そのユーザーの全セッションを失効させたい場合に使用
+export async function revokeAllSessionsForUser(db: D1Database, userId: string): Promise<void> {
+  await db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(userId).run()
 }
 
 // パスワードハッシュ: PBKDF2 (SHA-256, 100,000回反復) + ユーザーごとのランダムソルト
@@ -129,13 +147,28 @@ export const authMiddleware = createMiddleware<AppContext>(async (c, next) => {
   }
 
   const token = authHeader.slice(7)
-  const payload = await verifyJWT(token, c.env.JWT_SECRET)
-  if (!payload) {
-    return c.json({ success: false, error: { code: 'INVALID_TOKEN', message: 'トークンが無効または期限切れです' } }, 401)
+  const sessionId = await verifySessionToken(token, c.env.JWT_SECRET)
+  if (!sessionId) {
+    return c.json({ success: false, error: { code: 'INVALID_TOKEN', message: 'トークンが無効です' } }, 401)
   }
 
-  c.set('userId', payload.sub)
-  c.set('userEmail', payload.email)
+  const tokenHash = await hashSessionId(sessionId)
+  const session = await c.env.DB.prepare(
+    'SELECT s.user_id, s.expires_at, u.email FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.token_hash = ?'
+  ).bind(tokenHash).first<{ user_id: string; expires_at: string; email: string }>()
+
+  if (!session) {
+    return c.json({ success: false, error: { code: 'INVALID_TOKEN', message: 'セッションが無効です。再度ログインしてください' } }, 401)
+  }
+
+  if (new Date(session.expires_at).getTime() < Date.now()) {
+    // 期限切れセッションはついでに掃除しておく
+    await c.env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(tokenHash).run()
+    return c.json({ success: false, error: { code: 'INVALID_TOKEN', message: 'セッションの有効期限が切れました。再度ログインしてください' } }, 401)
+  }
+
+  c.set('userId', session.user_id)
+  c.set('userEmail', session.email)
   await next()
 })
 

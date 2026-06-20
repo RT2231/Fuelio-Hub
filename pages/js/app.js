@@ -140,7 +140,12 @@ function closeModal() {
 }
 
 // ===== Auth =====
-function logout() {
+async function logout() {
+  try {
+    await api.post('/auth/logout')
+  } catch {
+    // サーバー側の失効に失敗しても、ローカルのトークンは必ず破棄してログイン画面に戻す
+  }
   localStorage.removeItem('fh_token')
   localStorage.removeItem('fh_user')
   localStorage.removeItem('fh_last_vehicle')
@@ -192,7 +197,12 @@ async function saveProfile() {
     }
 
     if (currentPass && newPass) {
-      await api.post('/auth/change-password', { current_password: currentPass, new_password: newPass })
+      const res = await api.post('/auth/change-password', { current_password: currentPass, new_password: newPass })
+      // パスワード変更は全セッションを失効させるサーバー仕様のため、
+      // 新しく発行されたトークンに今すぐ差し替える（差し替えないと次の操作で強制ログアウトされる）
+      if (res?.data?.token) {
+        localStorage.setItem('fh_token', res.data.token)
+      }
     }
 
     toast('保存しました')
