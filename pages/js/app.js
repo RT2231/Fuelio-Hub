@@ -171,7 +171,7 @@ async function showProfileModal() {
       </div>
       <div class="field">
         <label>新しいパスワード</label>
-        <input type="password" id="new-pass" placeholder="8文字以上">
+        <input type="password" id="new-pass" placeholder="8文字以上・英字と数字を含む">
       </div>
     </div>
     <div id="profile-msg"></div>

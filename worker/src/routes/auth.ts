@@ -1,18 +1,30 @@
 import { Hono } from 'hono'
-import { createSession, revokeSession, revokeAllSessionsForUser, hashPassword, verifyPassword, generateId, authMiddleware } from '../middleware/auth'
+import {
+  createSession, revokeSession, revokeAllSessionsForUser, hashPassword, verifyPassword,
+  generateId, authMiddleware, loginRateLimitMiddleware, registerRateLimitMiddleware,
+  checkRateLimit, resetRateLimit, checkPasswordStrength,
+} from '../middleware/auth'
 import type { AppContext, Env } from '../types'
 
 export const authRoutes = new Hono<AppContext>()
 
 // POST /api/v1/auth/register
-authRoutes.post('/register', async (c) => {
+authRoutes.post('/register', registerRateLimitMiddleware, async (c) => {
   const { email, password, display_name } = await c.req.json()
 
-  if (!email || !password) {
+  if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
     return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'メールとパスワードは必須です' } }, 400)
   }
-  if (password.length < 8) {
-    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'パスワードは8文字以上必要です' } }, 400)
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: '有効なメールアドレスを入力してください' } }, 400)
+  }
+  if (display_name != null && typeof display_name === 'string' && display_name.length > 100) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: '表示名は100文字以内で入力してください' } }, 400)
+  }
+
+  const strength = checkPasswordStrength(password)
+  if (!strength.valid) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: strength.message } }, 400)
   }
 
   const existing = await c.env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email.toLowerCase()).first()
@@ -39,16 +51,29 @@ authRoutes.post('/register', async (c) => {
 })
 
 // POST /api/v1/auth/login
-authRoutes.post('/login', async (c) => {
+authRoutes.post('/login', loginRateLimitMiddleware, async (c) => {
   const { email, password } = await c.req.json()
 
-  if (!email || !password) {
+  if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
     return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'メールとパスワードは必須です' } }, 400)
+  }
+
+  const normalizedEmail = email.toLowerCase()
+
+  // 特定アカウントへの集中的な総当たりを防ぐため、メールアドレス単位でも制限する
+  // (IP単位の制限だけだと、分散したIPから1アカウントを狙う攻撃を防げないため)
+  const emailLimitKey = `login_email:${normalizedEmail}`
+  const emailLimit = await checkRateLimit(c.env.DB, emailLimitKey, 8, 15 * 60)
+  if (!emailLimit.allowed) {
+    return c.json({
+      success: false,
+      error: { code: 'RATE_LIMITED', message: 'このアカウントへのログイン試行が多すぎます。しばらく経ってから再度お試しください' }
+    }, 429, { 'Retry-After': String(emailLimit.retryAfterSeconds) })
   }
 
   const user = await c.env.DB.prepare(
     'SELECT id, email, password_hash, display_name FROM users WHERE email = ?'
-  ).bind(email.toLowerCase()).first<{ id: string; email: string; password_hash: string; display_name: string | null }>()
+  ).bind(normalizedEmail).first<{ id: string; email: string; password_hash: string; display_name: string | null }>()
 
   if (!user) {
     return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'メールまたはパスワードが正しくありません' } }, 401)
@@ -58,6 +83,9 @@ authRoutes.post('/login', async (c) => {
   if (!isValid) {
     return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'メールまたはパスワードが正しくありません' } }, 401)
   }
+
+  // ログイン成功したので、このアカウントの失敗カウンタはリセットする
+  await resetRateLimit(c.env.DB, emailLimitKey)
 
   const token = await createSession(c.env.DB, user.id, c.env.JWT_SECRET)
 
@@ -98,6 +126,10 @@ authRoutes.patch('/me', authMiddleware, async (c) => {
   const userId = c.get('userId')
   const { display_name } = await c.req.json()
 
+  if (display_name != null && typeof display_name === 'string' && display_name.length > 100) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: '表示名は100文字以内で入力してください' } }, 400)
+  }
+
   await c.env.DB.prepare(
     'UPDATE users SET display_name = ?, updated_at = datetime(\'now\') WHERE id = ?'
   ).bind(display_name || null, userId).run()
@@ -110,11 +142,22 @@ authRoutes.post('/change-password', authMiddleware, async (c) => {
   const userId = c.get('userId')
   const { current_password, new_password } = await c.req.json()
 
-  if (!current_password || !new_password) {
+  if (!current_password || !new_password || typeof current_password !== 'string' || typeof new_password !== 'string') {
     return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: '現在のパスワードと新しいパスワードは必須です' } }, 400)
   }
-  if (new_password.length < 8) {
-    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: '新しいパスワードは8文字以上必要です' } }, 400)
+  const strength = checkPasswordStrength(new_password)
+  if (!strength.valid) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: strength.message } }, 400)
+  }
+
+  // セッションが盗まれた状態での現在パスワード総当たりを防ぐ
+  const changePassLimitKey = `change_pass:${userId}`
+  const changePassLimit = await checkRateLimit(c.env.DB, changePassLimitKey, 8, 15 * 60)
+  if (!changePassLimit.allowed) {
+    return c.json({
+      success: false,
+      error: { code: 'RATE_LIMITED', message: '試行回数が多すぎます。しばらく経ってから再度お試しください' }
+    }, 429, { 'Retry-After': String(changePassLimit.retryAfterSeconds) })
   }
 
   const user = await c.env.DB.prepare('SELECT password_hash FROM users WHERE id = ?').bind(userId).first<{ password_hash: string }>()
@@ -124,6 +167,9 @@ authRoutes.post('/change-password', authMiddleware, async (c) => {
   if (!isValid) {
     return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: '現在のパスワードが正しくありません' } }, 401)
   }
+
+  // 成功したのでカウンタはリセット
+  await resetRateLimit(c.env.DB, changePassLimitKey)
 
   const newHash = await hashPassword(new_password)
   await c.env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(newHash, userId).run()

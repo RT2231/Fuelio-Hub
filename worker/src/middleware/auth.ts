@@ -175,3 +175,130 @@ export const authMiddleware = createMiddleware<AppContext>(async (c, next) => {
 export function generateId(): string {
   return crypto.randomUUID()
 }
+
+// ===== レート制限 =====
+// 固定ウィンドウ方式。D1の rate_limits テーブルに (key, count, window_started_at) を保持し、
+// ウィンドウ期間内の試行回数が上限を超えたらブロックする。
+// key の例: "login:email正規化", "login_ip:1.2.3.4", "register_ip:1.2.3.4"
+export interface RateLimitResult {
+  allowed: boolean
+  remaining: number
+  retryAfterSeconds?: number
+}
+
+export async function checkRateLimit(
+  db: D1Database,
+  key: string,
+  maxAttempts: number,
+  windowSeconds: number
+): Promise<RateLimitResult> {
+  const now = Date.now()
+  const row = await db.prepare(
+    'SELECT count, window_started_at FROM rate_limits WHERE key = ?'
+  ).bind(key).first<{ count: number; window_started_at: string }>()
+
+  if (!row) {
+    await db.prepare(
+      'INSERT INTO rate_limits (key, count, window_started_at) VALUES (?, 1, ?)'
+    ).bind(key, new Date(now).toISOString()).run()
+    return { allowed: true, remaining: maxAttempts - 1 }
+  }
+
+  const windowStarted = new Date(row.window_started_at).getTime()
+  const windowAge = (now - windowStarted) / 1000
+
+  if (windowAge > windowSeconds) {
+    // ウィンドウが過ぎているのでリセット
+    await db.prepare(
+      'UPDATE rate_limits SET count = 1, window_started_at = ? WHERE key = ?'
+    ).bind(new Date(now).toISOString(), key).run()
+    return { allowed: true, remaining: maxAttempts - 1 }
+  }
+
+  if (row.count >= maxAttempts) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(windowSeconds - windowAge))
+    return { allowed: false, remaining: 0, retryAfterSeconds }
+  }
+
+  await db.prepare('UPDATE rate_limits SET count = count + 1 WHERE key = ?').bind(key).run()
+  return { allowed: true, remaining: maxAttempts - row.count - 1 }
+}
+
+// 成功時にカウンタをリセットする（正しいパスワードでログインできたら、
+// それまでの失敗回数はクリアして良い）
+export async function resetRateLimit(db: D1Database, key: string): Promise<void> {
+  await db.prepare('DELETE FROM rate_limits WHERE key = ?').bind(key).run()
+}
+
+function getClientIp(c: any): string {
+  // CF-Connecting-IP は Cloudflare のエッジが付与する、偽装不可能な実クライアントIP。
+  // X-Forwarded-For はクライアントが任意の値を送れてしまうため信頼しない。
+  return c.req.header('CF-Connecting-IP') || 'unknown'
+}
+
+export const loginRateLimitMiddleware = createMiddleware<AppContext>(async (c, next) => {
+  const ip = getClientIp(c)
+  const ipResult = await checkRateLimit(c.env.DB, `login_ip:${ip}`, 20, 15 * 60)
+  if (!ipResult.allowed) {
+    return c.json({
+      success: false,
+      error: { code: 'RATE_LIMITED', message: '試行回数が多すぎます。しばらく経ってから再度お試しください' }
+    }, 429, { 'Retry-After': String(ipResult.retryAfterSeconds) })
+  }
+  await next()
+})
+
+export const registerRateLimitMiddleware = createMiddleware<AppContext>(async (c, next) => {
+  const ip = getClientIp(c)
+  const ipResult = await checkRateLimit(c.env.DB, `register_ip:${ip}`, 10, 60 * 60)
+  if (!ipResult.allowed) {
+    return c.json({
+      success: false,
+      error: { code: 'RATE_LIMITED', message: '登録試行回数が多すぎます。しばらく経ってから再度お試しください' }
+    }, 429, { 'Retry-After': String(ipResult.retryAfterSeconds) })
+  }
+  await next()
+})
+
+// ===== パスワード強度チェック =====
+// 長さに加えて、ありがちな弱いパスワードと、文字種の単調さを弾く。
+// 完璧な強度判定ではないが、最低限の事故防止として機能する範囲。
+const COMMON_WEAK_PASSWORDS = new Set([
+  '12345678', '123456789', '1234567890', 'password', 'password1', 'password123',
+  'qwertyui', 'qwerty123', '11111111', '00000000', 'abc12345', 'letmein1',
+  'iloveyou', 'admin123', 'welcome1', 'monkey123', 'football', 'baseball',
+  'dragon123', 'master123', 'sunshine', 'princess', 'starwars', '87654321',
+  'asdfghjk', 'zxcvbnm1',
+])
+
+export function checkPasswordStrength(password: string): { valid: boolean; message?: string } {
+  if (password.length < 8) {
+    return { valid: false, message: 'パスワードは8文字以上必要です' }
+  }
+  if (password.length > 128) {
+    return { valid: false, message: 'パスワードは128文字以内で入力してください' }
+  }
+
+  const lower = password.toLowerCase()
+  if (COMMON_WEAK_PASSWORDS.has(lower)) {
+    return { valid: false, message: 'よく使われる単純なパスワードは使用できません。別のパスワードを設定してください' }
+  }
+
+  // 同じ文字の連続のみ、または昇順/降順の数字のみのような単調なパスワードを弾く
+  const isAllSameChar = /^(.)\1+$/.test(password)
+  if (isAllSameChar) {
+    return { valid: false, message: '単純すぎるパスワードです。別のパスワードを設定してください' }
+  }
+
+  // 文字種の多様性: 数字のみ、英字のみ、のような単一文字種は弾く
+  const hasLetter = /[a-zA-Z]/.test(password)
+  const hasDigit = /[0-9]/.test(password)
+  const hasOther = /[^a-zA-Z0-9]/.test(password)
+  const varietyCount = [hasLetter, hasDigit, hasOther].filter(Boolean).length
+
+  if (varietyCount < 2) {
+    return { valid: false, message: 'パスワードは英字と数字を組み合わせてください' }
+  }
+
+  return { valid: true }
+}

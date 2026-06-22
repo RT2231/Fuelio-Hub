@@ -64,7 +64,7 @@
         <input type="email" id="reg-email" placeholder="example@email.com" autocomplete="email">
       </div>
       <div class="field">
-        <label>パスワード <span class="hint">8文字以上</span></label>
+        <label>パスワード <span class="hint">8文字以上・英字と数字を含む</span></label>
         <input type="password" id="reg-password" placeholder="••••••••" autocomplete="new-password">
       </div>
       <div id="reg-error" class="error-msg hidden"></div>
@@ -138,6 +138,11 @@
     }
     if (password.length < 8) {
       errEl.textContent = 'パスワードは8文字以上必要です'
+      errEl.classList.remove('hidden')
+      return
+    }
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+      errEl.textContent = 'パスワードは英字と数字を組み合わせてください'
       errEl.classList.remove('hidden')
       return
     }

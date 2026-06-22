@@ -48,19 +48,29 @@ fuelRoutes.get('/vehicle/:vehicleId', async (c) => {
     return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'アクセス権限がありません' } }, 403)
   }
 
+  const limitNum = Math.min(Math.max(1, parseInt(limit) || 50), 200) // 最大200件
+  const offsetNum = Math.max(0, parseInt(offset) || 0)
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+
   let query = 'SELECT * FROM fuel_records WHERE vehicle_id = ?'
   const params: any[] = [vehicleId]
 
-  if (from) { query += ' AND date >= ?'; params.push(from) }
-  if (to) { query += ' AND date <= ?'; params.push(to) }
+  if (from) {
+    if (!dateRegex.test(from)) return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'from は YYYY-MM-DD 形式で指定してください' } }, 400)
+    query += ' AND date >= ?'; params.push(from)
+  }
+  if (to) {
+    if (!dateRegex.test(to)) return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'to は YYYY-MM-DD 形式で指定してください' } }, 400)
+    query += ' AND date <= ?'; params.push(to)
+  }
 
   query += ' ORDER BY date DESC, odometer DESC LIMIT ? OFFSET ?'
-  params.push(parseInt(limit), parseInt(offset))
+  params.push(limitNum, offsetNum)
 
   const records = await c.env.DB.prepare(query).bind(...params).all()
   const total = await c.env.DB.prepare('SELECT COUNT(*) as count FROM fuel_records WHERE vehicle_id = ?').bind(vehicleId).first<{ count: number }>()
 
-  return c.json({ success: true, data: records.results, meta: { total: total?.count || 0, limit: parseInt(limit), offset: parseInt(offset) } })
+  return c.json({ success: true, data: records.results, meta: { total: total?.count || 0, limit: limitNum, offset: offsetNum } })
 })
 
 // POST /api/v1/vehicles/:vehicleId/fuel-records
@@ -79,8 +89,24 @@ fuelRoutes.post('/vehicle/:vehicleId', async (c) => {
   const body = await c.req.json()
   const { date, odometer, fuel_amount, fuel_price, total_cost, is_full_tank = true, memo, weather, latitude, longitude, station_name } = body
 
-  if (!date || odometer === undefined) {
-    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: '日付とオドメーターは必須です' } }, 400)
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+  if (!date || !dateRegex.test(date)) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: '日付は YYYY-MM-DD 形式で入力してください' } }, 400)
+  }
+  if (odometer === undefined || odometer === null || typeof odometer !== 'number' || odometer < 0 || odometer > 9999999) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'オドメーターは0〜9999999の数値で入力してください' } }, 400)
+  }
+  if (fuel_amount != null && (typeof fuel_amount !== 'number' || fuel_amount <= 0 || fuel_amount > 9999)) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: '給油量が不正です' } }, 400)
+  }
+  if (fuel_price != null && (typeof fuel_price !== 'number' || fuel_price <= 0 || fuel_price > 99999)) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: '単価が不正です' } }, 400)
+  }
+  if (memo != null && typeof memo === 'string' && memo.length > 1000) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'メモは1000文字以内で入力してください' } }, 400)
+  }
+  if (station_name != null && typeof station_name === 'string' && station_name.length > 200) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'スタンド名は200文字以内で入力してください' } }, 400)
   }
 
   const id = generateId()

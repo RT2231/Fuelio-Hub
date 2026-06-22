@@ -38,6 +38,14 @@ vehicleRoutes.post('/', async (c) => {
     return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: '無効な車両種別または燃料種別です' } }, 400)
   }
 
+  // フィールド長チェック
+  if (typeof name === 'string' && name.length > 100) return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: '車両名は100文字以内で入力してください' } }, 400)
+  if (manufacturer != null && typeof manufacturer === 'string' && manufacturer.length > 100) return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'メーカーは100文字以内で入力してください' } }, 400)
+  if (model != null && typeof model === 'string' && model.length > 100) return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'モデルは100文字以内で入力してください' } }, 400)
+  if (note != null && typeof note === 'string' && note.length > 1000) return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'メモは1000文字以内で入力してください' } }, 400)
+  if (vin != null && (typeof vin !== 'string' || vin.length !== 17)) return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'VINは17文字で入力してください' } }, 400)
+  if (year != null && (!Number.isInteger(year) || year < 1886 || year > 2100)) return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: '年式が不正です' } }, 400)
+
   const id = generateId()
 
   await c.env.DB.batch([
@@ -164,7 +172,7 @@ vehicleRoutes.post('/:id/members', async (c) => {
   }
 
   const { email, role } = await c.req.json()
-  if (!email || !role) {
+  if (!email || !role || typeof email !== 'string') {
     return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'メールとロールは必須です' } }, 400)
   }
   if (!['editor', 'viewer'].includes(role)) {

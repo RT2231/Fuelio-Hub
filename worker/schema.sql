@@ -84,6 +84,15 @@ CREATE TABLE IF NOT EXISTS api_tokens (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
+-- ログイン・登録試行のレート制限用。key は "login:<email正規化>" や
+-- "login_ip:<ip>" のような形式の文字列。固定ウィンドウ方式で、ウィンドウが
+-- 過ぎたら自然に新しい行として扱われる(古い行は定期的にパージ)。
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key TEXT PRIMARY KEY,
+  count INTEGER NOT NULL DEFAULT 1,
+  window_started_at TEXT NOT NULL
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_vehicles_owner ON vehicles(owner_id);
 CREATE INDEX IF NOT EXISTS idx_vehicles_vin ON vehicles(vin);

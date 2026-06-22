@@ -40,8 +40,22 @@ maintenanceRoutes.post('/vehicle/:vehicleId', async (c) => {
 
   const { title, description, cost, odometer, maintenance_date, category } = await c.req.json()
 
-  if (!title) {
+  const validCategories = ['oil', 'tire', 'brake', 'battery', 'inspection', 'wash', 'other']
+
+  if (!title || typeof title !== 'string') {
     return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'タイトルは必須です' } }, 400)
+  }
+  if (title.length > 200) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'タイトルは200文字以内で入力してください' } }, 400)
+  }
+  if (description != null && typeof description === 'string' && description.length > 1000) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'メモは1000文字以内で入力してください' } }, 400)
+  }
+  if (cost != null && (typeof cost !== 'number' || cost < 0 || cost > 999999999)) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: '費用が不正です' } }, 400)
+  }
+  if (category != null && !validCategories.includes(category)) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: '無効なカテゴリです' } }, 400)
   }
 
   const id = generateId()
